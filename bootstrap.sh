@@ -136,16 +136,8 @@ setup_directories
 setup_config_files
 
 
-# Packages to install and configure: , , , , , go, , , , , , redis-cli, , , gnupg, , black, python linters, go linters, docker-compose, cdk8s, tflint, terraform, , helm, nettle, vegeeta, node, hashicorp vault, yamllint, pyyaml, kind, ngrok, docker, vagrant, secret scanning tools, bc ( better commit ), rectangle, 
-# Brave browser
-# Install obsidian
-# Install slack
-# Instal wireshark
-# Install virtual box
-# Install mongodb compass
-# table plus, postman, kitty, burpsuit, 
-
-
+# TODO: Packages to install and configure
+# redis-cli, gnupg, black, python linters, go linters, docker-compose, cdk8s, tflint, terraform, , helm, nettle, vegeeta, node, hashicorp vault, yamllint, pyyaml, kind, ngrok, docker, vagrant, secret scanning tools, bc ( better commit ), rectangle, brave, obsidian, wireshark, virtualbox, mongo compass, table plus, postman burpsuit
 
 # function start_services {
 #     runcmd skhd --restart-service
