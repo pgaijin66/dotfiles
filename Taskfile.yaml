@@ -1,0 +1,10 @@
+# This is work in progress ( DO NOT USE )
+version: '3'
+
+tasks:
+  bootstrap:
+    cmds: 
+      - /bin/bash bootstrap.sh {{.CLI_ARGS}}
+  build:
+    cmds: 
+      - ansible-playbook -i localhost playbooks/apply-base-config.yaml --ask-become-pass

@@ -1,0 +1,25 @@
+---
+# This is work in progress
+- name: Install base packages
+  community.general.homebrew:
+    name: 
+      - git
+      # - shellcheck
+      # - hadolint
+      # - ngrok
+      # - nmap
+      # - lolcat
+      # - figlet
+    state: present
+
+- name: Setup hashicorp tab
+  community.general.homebrew_tap:
+    name: hashicorp/tap
+    state: present
+
+- name: Install vagrant
+  # when:
+  community.general.homebrew:
+    name: hashicorp/tap/hashicorp-vagrant
+    state: present
+    

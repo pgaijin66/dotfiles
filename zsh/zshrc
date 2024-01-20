@@ -1,0 +1,108 @@
+# If you come from bash you might have to change your $PATH.
+# export PATH=$HOME/bin:/usr/local/bin:$PATH
+export PATH=HOME/bin:/Users/pgaijin66/src/github/cheesy-app/cli/binary:$PATH
+
+export ZSH="$HOME/.oh-my-zsh"
+
+ZSH_THEME="robbyrussell"
+
+# Example format: plugins=(rails git textmate ruby lighthouse)
+# Add wisely, as too many plugins slow down shell startup.
+plugins=(git)
+
+source $ZSH/oh-my-zsh.sh
+
+# Install key binding app
+[[ -r ~/Repos/znap/znap.zsh ]] ||
+    git clone --depth 1 -- \
+        https://github.com/marlonrichert/zsh-snap.git ~/Repos/znap
+source ~/Repos/znap/znap.zsh  # Start Znap
+znap source marlonrichert/zsh-edit
+
+
+# GPG keys
+export GPG_TTY=$(tty)
+
+# Alias
+
+PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
+# Tihis is the line adds $GOPATH/bin to $PATH
+PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
+
+lolbanner ()
+{
+    echo
+    figlet -f ~/.local/share/fonts/3d.flf $* | lolcat
+    echo
+}
+
+# Github
+alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
+
+# Docker
+alias dup='docker-compose up -d'
+alias ddown='docker-compose down'
+
+# Terminal shortcuts
+alias lll='ls -lahtr'
+alias grep2="grep -v '^\s*$\|^\s*\#' $1"
+alias cls="clear"
+alias pd="cd ~/src/personal/github"
+alias wd="cd ~/src/work/github"
+
+
+# Check internet and dns
+alias ruok='
+            # Ping Google
+            echo "Pinging Google..."
+            ping -c 2 google.com;
+
+            # DNS lookup for Google
+            echo -e "\nDNS Lookup for Google:"
+            dig +short google.com;
+
+            # Retrieve headers from Google homepage
+            echo -e "\nHeaders from Google homepage:"
+            curl -I http://www.google.com 2>/dev/null | head -n 1;
+
+            # Check if Google is reachable using wget
+            echo -e "\nChecking Google reachability with wget..."
+            wget -q --spider www.google.com;
+            if [ $? -eq 0 ]; then
+                echo "OK"
+            else
+                echo "NOT OKAY"
+            fi
+
+            # Perform DNS lookup using nslookup
+            echo -e "\nDNS Lookup for Google using nslookup:"
+            nslookup google.com
+            '
+
+# Kubernetes
+alias kd='kubectl get deployment'
+alias kn='kubectl get namaspace'
+alias ks='kubectl get service'
+alias ksec='kubectl get secret'
+alias kp='kubectl port-forward'
+alias kdel='kubectl delete'
+
+
+# FZF
+alias sd="cd ~ && \$(find Documents src Desktop Downloads -type d -maxdepth 4  |  fzf)"
+
+# Key bindings
+bind '^f' 'sd' # Open fzf finder quicker
+
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/usr/local/bin/google-cloud-sdk/path.zsh.inc' ]; then . '/usr/local/bin/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/usr/local/bin/google-cloud-sdk/completion.zsh.inc' ]; then . '/usr/local/bin/google-cloud-sdk/completion.zsh.inc'; fi
+
+export GH_TOKEN=""
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
