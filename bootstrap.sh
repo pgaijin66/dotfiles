@@ -128,7 +128,7 @@ function setup_config_files {
 # Run the installation functions
 install_brew
 install_packages
-install_skhd
+# install_skhd
 
 # Additional setup steps
 setup_dotfiles

@@ -1,6 +1,8 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
-export PATH=HOME/bin:/Users/pgaijin66/src/github/cheesy-app/cli/binary:$PATH
+export GOROOT=/usr/local/go
+
+export PATH=$HOME/bin:$GOROOT/bin:$PATH
 
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -49,7 +51,7 @@ alias grep2="grep -v '^\s*$\|^\s*\#' $1"
 alias cls="clear"
 alias pd="cd ~/src/personal/github"
 alias wd="cd ~/src/work/github"
-
+alias c="clear"
 
 # Check internet and dns
 alias ruok='
