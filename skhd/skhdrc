@@ -35,7 +35,7 @@ shift + alt - q : yabai -m window --close
 shift + alt - space : yabai -m window --toggle float
 
 # open terminal, blazingly fast compared to iTerm/Hyper
-alt - return : /Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~
+cmd - return : /Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~
 
 # # open qutebrowser
 # cmd + shift - return : ~/Scripts/qtb.sh
