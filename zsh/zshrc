@@ -1,6 +1,6 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
-export GOROOT=/usr/local/go
+export GOROOT=/opt/homebrew/bin/go
 
 export PATH=$HOME/bin:$GOROOT/bin:$PATH
 
@@ -49,8 +49,8 @@ alias ddown='docker-compose down'
 alias lll='ls -lahtr'
 alias grep2="grep -v '^\s*$\|^\s*\#' $1"
 alias cls="clear"
-alias pd="cd ~/src/personal/github"
-alias wd="cd ~/src/work/github"
+alias pd="cd ~/work"
+alias wd="cd ~/personal"
 alias c="clear"
 
 # Check internet and dns

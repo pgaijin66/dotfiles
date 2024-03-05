@@ -1,7 +1,0 @@
----
-# This is work in progress
-- hosts: localhost
-  # become: true
-  gather_facts: true
-  roles:
-    - "roles/base-config"

@@ -21,15 +21,10 @@ function install_brew {
     if [[ ! $exists ]]; then
         echo "No brew installation found, installing..."
         runcmd /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        runcmd brew update && brew upgrade
     else
         echo "brew is installed, nothing to do here..."
     fi
-}
-
-# Function to install yabai
-function install_yabai {
-    runcmd brew install koekeishiya/formulae/yabai
-    runcmd yabai --start-service
 }
 
 # Function to install skhd
@@ -46,9 +41,8 @@ function install_ansible {
 
 # Function to install Python
 function install_python {
-    runcmd brew install python3
-    runcmd curl -O https://bootstrap.pypa.io/get-pip.py
-    sudo python3 get-pip.py
+    runcmd brew install python@3.9
+    runcmd /bin/bash -c "curl -O https://bootstrap.pypa.io/get-pip.py"
 }
 
 # Function to install various packages
@@ -62,12 +56,24 @@ function install_packages {
                         fzf \
                         go-task \
                         tree \
-                        exa \
                         nvm \
-                        xz \
+                        go \
+                        openjdk \
+                        tfenv \
+                        helm \
+                        helmfile \
+                        kubectx \
+                        kubectl \
+                        sops \
+                        docker \
+                        docker-compose \
+                        colima \
+                        docker-credential-helper \
+                        aylei/tap/kubectl-debug \
                         git-delta \
                         git-absorb \
                         shellcheck \
+                        awscli \
                         hadolint \
                         aquasecurity/trivy/trivy \
                         figlet \
@@ -77,13 +83,17 @@ function install_packages {
                         ansible \
                         derailed/k9s/k9s
 
-    # runcmd "$(curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin)"
+}
+
+# Function to install Terraform
+function install_kitty {
+    runcmd /bin/bash -c "$(curl -fsSL  https://sw.kovidgoyal.net/kitty/installer.sh)"
 }
 
 # Function to install Terraform
 function install_terraform {
     runcmd brew tap hashicorp/tap
-    runcmd hashicorp/tap/terraform
+    runcmd brew install hashicorp/tap/terraform
 }
 
 # Function to set up dotfiles
@@ -129,10 +139,15 @@ function setup_config_files {
 install_brew
 install_packages
 install_skhd
+# install_kitty
+install_terraform
+install_python
+install_ansible
+
 
 # Additional setup steps
 setup_dotfiles
-setup_directories
+# setup_directories
 setup_config_files
 
 
@@ -143,3 +158,6 @@ setup_config_files
 #     runcmd skhd --restart-service
 #     runcmd yabai --restart-service
 # }
+
+
+echo "completed"
