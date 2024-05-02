@@ -1,9 +1,12 @@
 [user]
-	signingkey = 2F1EE7CDC451C403
 	name = Prabesh Thapa
 	email = sthapaprabesh2020@gmail.com
+  
+[includeIf "gitdir:~/work"]
+    path = ~/work/.gitconfig
+
 [commit]
-	gpgsign = true
+	gpgsign = false
 [init]
 	defaultBranch = main
 [interactive]
@@ -91,3 +94,4 @@
     autocorrect = 10
 [credential]
 	helper = osxkeychain
+

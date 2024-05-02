@@ -48,41 +48,58 @@ function install_python {
 # Function to install various packages
 function install_packages {
     runcmd brew install bat \
-                        gcc \
-                        ripgrep \
-                        pipenv \
-                        black \
-                        neovim \
-                        fzf \
-                        go-task \
-                        tree \
-                        nvm \
-                        go \
-                        openjdk \
-                        tfenv \
-                        helm \
-                        helmfile \
-                        kubectx \
-                        kubectl \
-                        sops \
-                        docker \
-                        docker-compose \
-                        colima \
-                        docker-credential-helper \
-                        aylei/tap/kubectl-debug \
-                        git-delta \
-                        git-absorb \
-                        shellcheck \
-                        awscli \
-                        hadolint \
-                        aquasecurity/trivy/trivy \
-                        figlet \
-                        lolcat \
-                        mkcert \
-                        nmap \
-                        ansible \
-                        derailed/k9s/k9s
-
+                            gcc \
+                            ripgrep \
+                            pipenv \
+                            black \
+                            neovim \
+                            fzf \
+                            go-task \
+                            tree \
+                            nvm \
+                            go \
+                            openjdk \
+                            tfenv \
+                            helm \
+                            helmfile \
+                            kubectx \
+                            kubectl \
+                            sops \
+                            docker \
+                            docker-compose \
+                            colima \
+                            docker-credential-helper \
+                            aylei/tap/kubectl-debug \
+                            git-delta \
+                            git-absorb \
+                            shellcheck \
+                            awscli \
+                            hadolint \
+                            aquasecurity/trivy/trivy \
+                            figlet \
+                            lolcat \
+                            mkcert \
+                            nmap \
+                            ansible \
+                            derailed/k9s/k9s \
+                            snappy \
+                            awscurl \
+                            jid \
+                            watch \
+                            wget \
+                            telnet \
+                            terraformer \
+                            tfsec \
+                            tree-sitter \
+                            terraform-docs \
+                            bats-core \
+                            eksup \
+                            kubent \
+                            mtr \
+                            nettle \
+                            tcpdump \
+                            unbound \
+                            velero
 }
 
 # Function to install Terraform

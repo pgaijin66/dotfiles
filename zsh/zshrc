@@ -1,9 +1,5 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
-export GOROOT=/opt/homebrew/bin/go
-
-export PATH=$HOME/bin:$GOROOT/bin:$PATH
-
 export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="robbyrussell"
@@ -82,16 +78,45 @@ alias ruok='
             '
 
 # Kubernetes
+alias k='kubectl'
 alias kd='kubectl get deployment'
 alias kn='kubectl get namaspace'
 alias ks='kubectl get service'
 alias ksec='kubectl get secret'
 alias kp='kubectl port-forward'
 alias kdel='kubectl delete'
+alias kg="k get"
+alias kgpo="kg po" or alias kgpo="kg pods"
+alias kgno="kg no" or alias kgno="kg nodes"
+alias kd="k describe"
+alias kaf="k apply -f"
+alias kdf="k delete -f"
+alias kgn='kubectl get nodes'
+alias kgp='kubectl get pods'
+alias kgpa='kubectl get pods -- all-namespaces'
+alias kgs='kubectl get services'
+alias kgd='kubectl get deployments'
+alias kd= 'kubectl delete'
+alias kdp='kubectl delete pod'
+alias kds='kubectl delete service'
+alias kdd='kubectl delete deployment'
+alias kdn='kubectl delete namespace'
+alias kn='kctl config set-context --current --namespace'
+alias kgel='kctl get events --sort-by=.lastTimestamp'
+alias kgec='kctl get events --sort-by=.metadata.creationTimestamp'
+function kger() { kctl get events --sort-by=.lastTimestamp --field-selector involvedObject.name="$@" }
+alias kgworld='kctl get $(kubectl api-resources --verbs=list --namespaced -o name | paste -sd ",")'
+alias kgnr="k get nodes --no-headers | awk '{print \$1}' | xargs -I {} sh -c 'echo {} ; kubectl describe node {} | grep Allocated -A 5 | grep -ve Event -ve Allocated -ve percent -ve -- ; echo '"
+alias kdebug="kctl -n default run debug-$USER --rm -it --tty --image leodotcloud/swiss-army-knife:v0.12 --image-pull-policy=IfNotPresent -- bash"
+function kgpc() { kctl get pod -o jsonpath="{.spec.containers[*].name}" "$@" && echo "" }
+alias kping='kctl run httping -it --image bretfisher/httping --image-pull-policy=IfNotPresent --rm=true --'
+function kyaml() { kubectl get "$@" -o yaml | kubectl-neat }
+alias krmfailed='kctl delete pods --field-selector=status.phase=Failed'
 
+alias kx='kubectx'
 
 # FZF
-alias sd="cd ~ && \$(find Documents src Desktop Downloads -type d -maxdepth 4  |  fzf)"
+alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4  |  fzf)"
 
 # Key bindings
 bind '^f' 'sd' # Open fzf finder quicker
@@ -108,3 +133,12 @@ export GH_TOKEN=""
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export CLUSTER_LOGIN_SSO=true
+
+source <(alias s=switch)
+
+source <(compdef _switcher switch)
+
+# Pull in env vars necessary for Capsule development
+source /Users/pthapa/.config/cia/.cia_envvars
