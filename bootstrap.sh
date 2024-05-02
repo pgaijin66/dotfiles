@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Set up the configuration directory
-export CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME"/.config}
 if [[ ! -d "$CONFIG_HOME" ]]; then
     mkdir -p "$CONFIG_HOME"
 fi
@@ -121,14 +121,14 @@ function setup_dotfiles {
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     fi
-    ln -sf $DOTFILES/zsh/zshrc $HOME/.zshrc
+    ln -sf "$DOTFILES"/zsh/zshrc "$HOME"/.zshrc
 
     # Yabai
-    ln -sf $DOTFILES/yabai/yabairc $HOME/.yabairc
+    ln -sf "$DOTFILES"/yabai/yabairc "$HOME"/.yabairc
     chmod +x ~/.yabairc
 
     # skhd
-    ln -sf $DOTFILES/skhd/skhdrc $HOME/.skhdrc
+    ln -sf "$DOTFILES"/skhd/skhdrc "$HOME"/.skhdrc
     chmod +x ~/.skhdrc
 }
 
@@ -141,15 +141,15 @@ function setup_directories {
 # Function to set up configuration files
 function setup_config_files {
     # Neovim
-    rm -rf $HOME/.config/nvim
-    ln -s $DOTFILES/nvim $HOME/.config/nvim
+    rm -rf "$HOME"/.config/nvim
+    ln -s "$DOTFILES"/nvim "$HOME"/.config/nvim
 
     # Kitty
-    rm -rf $HOME/.config/kitty
-    ln -s $DOTFILES/kitty $HOME/.config/kitty
+    rm -rf "$HOME"/.config/kitty
+    ln -s "$DOTFILES"/kitty "$HOME"/.config/kitty
 
     # Git
-    ln -sf $DOTFILES/git/gitconfig $HOME/.gitconfig
+    ln -sf "$DOTFILES"/git/gitconfig "$HOME"/.gitconfig
 }
 
 # Run the installation functions
