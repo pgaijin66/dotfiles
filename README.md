@@ -15,8 +15,8 @@ This repository contains a script to set up your development environment by inst
 To get started, clone the repository and run the setup script:
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-name>
+git clone git@github.com:pgaijin66/dotfiles.git
+cd dotfiles
 /bin/bash bootstrap.sh
 ```
 
