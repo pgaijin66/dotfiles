@@ -24,7 +24,7 @@ export GPG_TTY=$(tty)
 
 # Alias
 
-PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
+PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
 # Tihis is the line adds $GOPATH/bin to $PATH
 PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
 
@@ -114,7 +114,17 @@ alias kping='kctl run httping -it --image bretfisher/httping --image-pull-policy
 function kyaml() { kubectl get "$@" -o yaml | kubectl-neat }
 alias krmfailed='kctl delete pods --field-selector=status.phase=Failed'
 
+
+function lgn() { cia sso -p "$@" && cluster_login }
+
 alias kx='kubectx'
+
+alias prd='export AWS_PROFILE=prod && kx production'
+alias pex='export AWS_PROFILE=prod && kx prd-external'
+alias pit='export AWS_PROFILE=prod && kx prd-internal'
+alias stg='export AWS_PROFILE=pre-prod && kx devtest'
+alias dev='export AWS_PROFILE=pre-prod && kx dev'
+alias tst='export AWS_PROFILE=pre-prod && kx sre-test'
 
 # FZF
 alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4  |  fzf)"

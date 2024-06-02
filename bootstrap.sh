@@ -156,7 +156,7 @@ function setup_config_files {
 install_brew
 install_packages
 install_skhd
-# install_kitty
+install_kitty
 install_terraform
 install_python
 install_ansible
@@ -164,17 +164,13 @@ install_ansible
 
 # Additional setup steps
 setup_dotfiles
-# setup_directories
+setup_directories
 setup_config_files
 
-
-# TODO: Packages to install and configure
-# redis-cli, gnupg, black, python linters, go linters, docker-compose, cdk8s, tflint, terraform, , helm, nettle, vegeeta, node, hashicorp vault, yamllint, pyyaml, kind, ngrok, docker, vagrant, secret scanning tools, bc ( better commit ), rectangle, brave, obsidian, wireshark, virtualbox, mongo compass, table plus, postman burpsuit
-
-# function start_services {
-#     runcmd skhd --restart-service
-#     runcmd yabai --restart-service
-# }
+function start_services {
+    runcmd skhd --restart-service
+    runcmd yabai --restart-service
+}
 
 
 echo "completed"
