@@ -17,7 +17,7 @@ To get started, clone the repository and run the setup script:
 ```bash
 git clone git@github.com:pgaijin66/dotfiles.git
 cd dotfiles
-/bin/bash bootstrap.sh
+bash bootstrap.sh
 ```
 
 ## Script Breakdown
