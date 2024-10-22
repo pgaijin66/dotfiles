@@ -27,6 +27,16 @@ function install_brew {
     fi
 }
 
+# Function to install GNU Stow
+function install_gnu_stow {
+    if ! command -v stow &> /dev/null; then
+        echo "GNU Stow not found. Installing..."
+        runcmd brew install stow
+    else
+        echo "GNU Stow is already installed. Skipping..."
+    fi
+}
+
 # Function to install Python
 function install_python {
     if ! command -v python3 &> /dev/null || ! command -v pip3 &> /dev/null; then
@@ -90,36 +100,21 @@ function install_terraform {
 # Function to set up dotfiles
 function setup_dotfiles {
     DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    # Zsh
-    # Oh My Zsh
+
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         if ! KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"; then
             echo "Error: Failed to install Oh My Zsh" >&2
             return 1
         fi
     fi
-    if ! ln -sf "$DOTFILES"/zsh/zshrc "$HOME"/.zshrc; then
-        echo "Error: Failed to create symlink for .zshrc" >&2
+
+    if ! stow -v -R -t "$HOME" -d "$DOTFILES" zsh yabai skhd; then
+        echo "Error: Failed to stow dotfiles" >&2
         return 1
     fi
 
-    # Yabai
-    if ! ln -sf "$DOTFILES"/yabai/yabairc "$HOME"/.yabairc; then
-        echo "Error: Failed to create symlink for .yabairc" >&2
-        return 1
-    fi
-    if ! chmod +x ~/.yabairc; then
-        echo "Error: Failed to make .yabairc executable" >&2
-        return 1
-    fi
-
-    # skhd
-    if ! ln -sf "$DOTFILES"/skhd/skhdrc "$HOME"/.skhdrc; then
-        echo "Error: Failed to create symlink for .skhdrc" >&2
-        return 1
-    fi
-    if ! chmod +x ~/.skhdrc; then
-        echo "Error: Failed to make .skhdrc executable" >&2
+    if ! chmod +x "$HOME"/.yabairc "$HOME"/.skhdrc; then
+        echo "Error: Failed to make .yabairc and .skhdrc executable" >&2
         return 1
     fi
 
@@ -128,7 +123,6 @@ function setup_dotfiles {
 
 # Function to create required directories
 function setup_directories {
-    # Create all required directories
     if ! mkdir -p ~/src/personal/github ~/src/work; then
         echo "Error: Failed to create required directories" >&2
         return 1
@@ -138,33 +132,16 @@ function setup_directories {
 
 # Function to set up configuration files
 function setup_config_files {
-    # Neovim
-    if [ -d "$HOME/.config/nvim" ]; then
-        if ! rm -rf "$HOME/.config/nvim"; then
-            echo "Error: Failed to remove existing Neovim config directory" >&2
-            return 1
-        fi
-    fi
-    if ! ln -s "$DOTFILES/nvim" "$HOME/.config/nvim"; then
-        echo "Error: Failed to create symlink for Neovim config" >&2
+    mkdir -p "$HOME/.config"
+
+    if ! stow -v -R -t "$HOME" -d "$DOTFILES" nvim kitty; then
+        echo "Error: Failed to stow Neovim and Kitty configs" >&2
         return 1
     fi
 
-    # Kitty
-    if [ -d "$HOME/.config/kitty" ]; then
-        if ! rm -rf "$HOME/.config/kitty"; then
-            echo "Error: Failed to remove existing Kitty config directory" >&2
-            return 1
-        fi
-    fi
-    if ! ln -s "$DOTFILES/kitty" "$HOME/.config/kitty"; then
-        echo "Error: Failed to create symlink for Kitty config" >&2
-        return 1
-    fi
-
-    # Git
-    if ! ln -sf "$DOTFILES/git/gitconfig" "$HOME/.gitconfig"; then
-        echo "Error: Failed to create symlink for Git config" >&2
+    # Git config needs special handling as it's not in .config
+    if ! stow -v -R -t "$HOME" -d "$DOTFILES" git; then
+        echo "Error: Failed to stow Git config" >&2
         return 1
     fi
 
@@ -173,6 +150,7 @@ function setup_config_files {
 
 # Run the installation functions
 install_brew
+install_gnu_stow
 install_packages
 install_kitty
 install_terraform
@@ -187,6 +165,5 @@ function start_services {
     runcmd skhd --restart-service
     runcmd yabai --restart-service
 }
-
 
 echo "completed !!!"
