@@ -62,11 +62,6 @@ function install_packages {
 Installs and configures additional tools like skhd, Kitty, Terraform, Python, and Ansible:
 
 ```bash
-function install_skhd {
-    brew install koekeishiya/formulae/skhd
-    skhd --start-service
-}
-
 function install_kitty {
     /bin/bash -c "$(curl -fsSL https://sw.kovidgoyal.net/kitty/installer.sh)"
 }
@@ -79,10 +74,6 @@ function install_terraform {
 function install_python {
     brew install python@3.9
     curl -O https://bootstrap.pypa.io/get-pip.py
-}
-
-function install_ansible {
-    brew install ansible
 }
 ```
 
@@ -110,7 +101,8 @@ Creates required directories:
 
 ```bash
 function setup_directories {
-    mkdir -p ~/src/personal/github ~/src/work
+    mkdir -p ~/src/personal/{github,books,docs,experiments,personal,projects,work} \
+             ~/src/work/{books,docs,experiments,personal,projects,work}
 }
 ```
 

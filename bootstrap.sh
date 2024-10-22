@@ -27,90 +27,64 @@ function install_brew {
     fi
 }
 
-# Function to install skhd
-function install_skhd {
-    runcmd brew install koekeishiya/formulae/skhd
-    runcmd skhd --start-service
-    # runcmd brew services restart skhd
-}
-
-# Function to install Ansible
-function install_ansible {
-    runcmd brew install ansible
-}
-
 # Function to install Python
 function install_python {
-    runcmd brew install python@3.9
-    runcmd /bin/bash -c "curl -O https://bootstrap.pypa.io/get-pip.py"
+    if ! command -v python3 &> /dev/null || ! command -v pip3 &> /dev/null; then
+        echo "Python or pip not found. Installing..."
+        runcmd brew install python@3.9
+        if ! command -v pip3 &> /dev/null; then
+            echo "pip not found. Installing..."
+            runcmd /bin/bash -c "curl -O https://bootstrap.pypa.io/get-pip.py"
+            runcmd python3 get-pip.py
+            runcmd rm get-pip.py
+        fi
+    else
+        echo "Python and pip are already installed. Skipping..."
+    fi
 }
 
 # Function to install various packages
 function install_packages {
-    runcmd brew install bat \
-                            gcc \
-                            ripgrep \
-                            pipenv \
-                            black \
-                            neovim \
-                            fzf \
-                            go-task \
-                            tree \
-                            nvm \
-                            go \
-                            openjdk \
-                            tfenv \
-                            helm \
-                            helmfile \
-                            kubectx \
-                            kubectl \
-                            sops \
-                            docker \
-                            docker-compose \
-                            colima \
-                            docker-credential-helper \
-                            aylei/tap/kubectl-debug \
-                            git-delta \
-                            git-absorb \
-                            shellcheck \
-                            awscli \
-                            hadolint \
-                            aquasecurity/trivy/trivy \
-                            figlet \
-                            lolcat \
-                            mkcert \
-                            nmap \
-                            ansible \
-                            derailed/k9s/k9s \
-                            snappy \
-                            awscurl \
-                            jid \
-                            watch \
-                            wget \
-                            telnet \
-                            terraformer \
-                            tfsec \
-                            tree-sitter \
-                            terraform-docs \
-                            bats-core \
-                            eksup \
-                            kubent \
-                            mtr \
-                            nettle \
-                            tcpdump \
-                            unbound \
-                            velero
+    packages=(
+        bat gcc ansible koekeishiya/formulae/skhd ripgrep pipenv black neovim fzf go-task tree nvm go openjdk
+        tfenv helm helmfile kubectx kubectl sops docker docker-compose colima
+        docker-credential-helper aylei/tap/kubectl-debug git-delta git-absorb
+        shellcheck awscli hadolint aquasecurity/trivy/trivy figlet lolcat
+        mkcert nmap ansible derailed/k9s/k9s snappy awscurl jid watch wget
+        telnet terraformer tfsec tree-sitter terraform-docs bats-core kubent
+        mtr nettle tcpdump unbound velero
+    )
+
+    for package in "${packages[@]}"; do
+        if ! brew list "$package" &>/dev/null; then
+            echo "Installing $package..."
+            runcmd brew install "$package"
+        else
+            echo "$package is already installed, skipping..."
+        fi
+    done
 }
 
-# Function to install Terraform
+
+# Function to install Kitty
 function install_kitty {
-    runcmd /bin/bash -c "$(curl -fsSL  https://sw.kovidgoyal.net/kitty/installer.sh)"
+    if [ ! -d "/Applications/kitty.app" ]; then
+        echo "Kitty not found. Installing..."
+        runcmd /bin/bash -c "$(curl -fsSL https://sw.kovidgoyal.net/kitty/installer.sh)"
+    else
+        echo "Kitty is already installed. Skipping..."
+    fi
 }
 
 # Function to install Terraform
 function install_terraform {
-    runcmd brew tap hashicorp/tap
-    runcmd brew install hashicorp/tap/terraform
+    if ! command -v terraform &> /dev/null; then
+        echo "Terraform not found. Installing..."
+        runcmd brew tap hashicorp/tap
+        runcmd brew install hashicorp/tap/terraform
+    else
+        echo "Terraform is already installed. Skipping..."
+    fi
 }
 
 # Function to set up dotfiles
@@ -119,48 +93,90 @@ function setup_dotfiles {
     # Zsh
     # Oh My Zsh
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
-        KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        if ! KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"; then
+            echo "Error: Failed to install Oh My Zsh" >&2
+            return 1
+        fi
     fi
-    ln -sf "$DOTFILES"/zsh/zshrc "$HOME"/.zshrc
+    if ! ln -sf "$DOTFILES"/zsh/zshrc "$HOME"/.zshrc; then
+        echo "Error: Failed to create symlink for .zshrc" >&2
+        return 1
+    fi
 
     # Yabai
-    ln -sf "$DOTFILES"/yabai/yabairc "$HOME"/.yabairc
-    chmod +x ~/.yabairc
+    if ! ln -sf "$DOTFILES"/yabai/yabairc "$HOME"/.yabairc; then
+        echo "Error: Failed to create symlink for .yabairc" >&2
+        return 1
+    fi
+    if ! chmod +x ~/.yabairc; then
+        echo "Error: Failed to make .yabairc executable" >&2
+        return 1
+    fi
 
     # skhd
-    ln -sf "$DOTFILES"/skhd/skhdrc "$HOME"/.skhdrc
-    chmod +x ~/.skhdrc
+    if ! ln -sf "$DOTFILES"/skhd/skhdrc "$HOME"/.skhdrc; then
+        echo "Error: Failed to create symlink for .skhdrc" >&2
+        return 1
+    fi
+    if ! chmod +x ~/.skhdrc; then
+        echo "Error: Failed to make .skhdrc executable" >&2
+        return 1
+    fi
+
+    echo "Dotfiles setup completed successfully"
 }
 
 # Function to create required directories
 function setup_directories {
     # Create all required directories
-    mkdir -p ~/src/personal/github ~/src/work
+    if ! mkdir -p ~/src/personal/github ~/src/work; then
+        echo "Error: Failed to create required directories" >&2
+        return 1
+    fi
+    echo "Directories created successfully"
 }
 
 # Function to set up configuration files
 function setup_config_files {
     # Neovim
-    rm -rf "$HOME"/.config/nvim
-    ln -s "$DOTFILES"/nvim "$HOME"/.config/nvim
+    if [ -d "$HOME/.config/nvim" ]; then
+        if ! rm -rf "$HOME/.config/nvim"; then
+            echo "Error: Failed to remove existing Neovim config directory" >&2
+            return 1
+        fi
+    fi
+    if ! ln -s "$DOTFILES/nvim" "$HOME/.config/nvim"; then
+        echo "Error: Failed to create symlink for Neovim config" >&2
+        return 1
+    fi
 
     # Kitty
-    rm -rf "$HOME"/.config/kitty
-    ln -s "$DOTFILES"/kitty "$HOME"/.config/kitty
+    if [ -d "$HOME/.config/kitty" ]; then
+        if ! rm -rf "$HOME/.config/kitty"; then
+            echo "Error: Failed to remove existing Kitty config directory" >&2
+            return 1
+        fi
+    fi
+    if ! ln -s "$DOTFILES/kitty" "$HOME/.config/kitty"; then
+        echo "Error: Failed to create symlink for Kitty config" >&2
+        return 1
+    fi
 
     # Git
-    ln -sf "$DOTFILES"/git/gitconfig "$HOME"/.gitconfig
+    if ! ln -sf "$DOTFILES/git/gitconfig" "$HOME/.gitconfig"; then
+        echo "Error: Failed to create symlink for Git config" >&2
+        return 1
+    fi
+
+    echo "Config files setup completed successfully"
 }
 
 # Run the installation functions
 install_brew
 install_packages
-install_skhd
 install_kitty
 install_terraform
 install_python
-install_ansible
-
 
 # Additional setup steps
 setup_dotfiles
@@ -173,4 +189,4 @@ function start_services {
 }
 
 
-echo "completed"
+echo "completed !!!"

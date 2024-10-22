@@ -115,19 +115,10 @@ function kyaml() { kubectl get "$@" -o yaml | kubectl-neat }
 alias krmfailed='kctl delete pods --field-selector=status.phase=Failed'
 
 
-function lgn() { cia sso -p "$@" && cluster_login }
-
 alias kx='kubectx'
 
-alias prd='export AWS_PROFILE=prod && kx production'
-alias pex='export AWS_PROFILE=prod && kx prd-external'
-alias pit='export AWS_PROFILE=prod && kx prd-internal'
-alias stg='export AWS_PROFILE=pre-prod && kx devtest'
-alias dev='export AWS_PROFILE=pre-prod && kx dev'
-alias tst='export AWS_PROFILE=pre-prod && kx sre-test'
-
 # FZF
-alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4  |  fzf)"
+alias sd="cd ~ && \$(find Documents src Desktop Downloads -type d -maxdepth 45  |  fzf)"
 
 # Key bindings
 bind '^f' 'sd' # Open fzf finder quicker
@@ -151,5 +142,3 @@ source <(alias s=switch)
 
 source <(compdef _switcher switch)
 
-# Pull in env vars necessary for Capsule development
-source /Users/pthapa/.config/cia/.cia_envvars
