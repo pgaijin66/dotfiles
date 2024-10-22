@@ -1,5 +1,63 @@
 #!/usr/bin/env bash
 
+# The
+packages=(
+        bat \
+        gcc \
+        ansible \
+        koekeishiya/formulae/skhd \
+        ripgrep \
+        pipenv \
+        black \
+        neovim \
+        fzf \
+        go-task \
+        tree \
+        nvm \
+        go \
+        openjdk \
+        tfenv \
+        helm \
+        helmfile \
+        kubectx \
+        kubectl \
+        sops \
+        docker \
+        docker-compose \
+        colima \
+        docker-credential-helper \
+        aylei/tap/kubectl-debug \
+        git-delta \
+        git-absorb \
+        shellcheck \
+        awscli \
+        hadolint \
+        aquasecurity/trivy/trivy \
+        figlet \
+        lolcat \
+        mkcert \
+        nmap \
+        ansible \
+        derailed/k9s/k9s \
+        snappy \
+        awscurl \
+        jid \
+        watch \
+        wget \
+        telnet \
+        terraformer \
+        tfsec \
+        tree-sitter \
+        terraform-docs \
+        bats-core \
+        kubent \
+        mtr \
+        nettle \
+        tcpdump \
+        unbound \
+        velero
+    )
+
 # Set up the configuration directory
 export CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME"/.config}
 if [[ ! -d "$CONFIG_HOME" ]]; then
@@ -55,16 +113,6 @@ function install_python {
 
 # Function to install various packages
 function install_packages {
-    packages=(
-        bat gcc ansible koekeishiya/formulae/skhd ripgrep pipenv black neovim fzf go-task tree nvm go openjdk
-        tfenv helm helmfile kubectx kubectl sops docker docker-compose colima
-        docker-credential-helper aylei/tap/kubectl-debug git-delta git-absorb
-        shellcheck awscli hadolint aquasecurity/trivy/trivy figlet lolcat
-        mkcert nmap ansible derailed/k9s/k9s snappy awscurl jid watch wget
-        telnet terraformer tfsec tree-sitter terraform-docs bats-core kubent
-        mtr nettle tcpdump unbound velero
-    )
-
     for package in "${packages[@]}"; do
         if ! brew list "$package" &>/dev/null; then
             echo "Installing $package..."
