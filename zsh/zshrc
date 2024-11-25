@@ -78,6 +78,252 @@ alias ruok='
             nslookup google.com
             '
 
+# Github
+alias gcam='git commit -am'
+alias gs='git status'
+alias gplr='git pull --rebase'
+alias gpsh='git push'
+alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
+alias glg='git log'
+# alias ggr='git grep -n -i --color'   
+alias ggr='git grep -n -i -w -C 2 --color --break --heading'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gdw='git diff --word-diff=color'
+alias gdt='git diff --stat'
+alias gdm='git diff main...'
+alias gdf='git diff --'
+alias gdd='git diff --color-words --word-diff-regex="[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"'
+
+# Remove existing alias if present
+unalias gsw 2>/dev/null
+
+# Function to sanitize branch names
+sanitize_branch_name() {
+    # First replace any character that isn't alphanumeric, hyphen, or underscore with a hyphen
+    # Then remove leading/trailing hyphens/underscores and collapse multiple hyphens
+    echo "$1" | sed 's/[^a-zA-Z0-9_-]/-/g' | \
+               sed 's/^[-_]*//g' | \
+               sed 's/[-_]*$//g' | \
+               sed 's/[-_]\{2,\}/-/g' | \
+               tr '[:upper:]' '[:lower:]'
+}
+
+# Interactive git branch switcher with fuzzy search
+# Requires: fzf (brew install fzf)
+# Interactive git branch switcher with fuzzy search
+gswi() {
+    local branches branch
+    
+    branches=$(git branch --all | grep -v HEAD) &&
+    branch=$(echo "$branches" |
+        fzf --height 40% \
+            --ansi \
+            --reverse \
+            --no-multi \
+            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" $(sed "s/.* //" <<< {})' \
+            --preview-window=right:60% \
+            --prompt="Switch to branch: " \
+            --bind 'ctrl-o:execute(git log --stat $(sed "s/.* //" <<< {}))'
+    ) &&
+    branch_name=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##") &&
+    git switch "$branch_name"
+}
+
+# Interactive create new branch with prefix suggestions and name sanitization
+gswci() {
+    local prefix branch_name sanitized_name
+    
+    # Common branch prefixes
+    prefix=$(echo -e "feature/\nfix/\nhotfix/\nrelease/\nchore/\ndocs/" |
+        fzf --height 20% \
+            --reverse \
+            --prompt="Select branch prefix: " \
+            --preview 'echo "This will create a new branch with the selected prefix"'
+    )
+    
+    if [ ! -z "$prefix" ]; then
+        echo -n "Enter branch name (without prefix): "
+        read input_name
+        
+        if [ ! -z "$input_name" ]; then
+            # Sanitize the branch name
+            sanitized_name=$(sanitize_branch_name "$input_name")
+            
+            # Show the sanitized name and ask for confirmation
+            echo "Branch name will be: ${prefix}${sanitized_name}"
+            echo -n "Create branch? [Y/n] "
+            read confirm
+            
+            if [[ "$confirm" =~ ^[Yy]?$ ]]; then
+                git switch -c "${prefix}${sanitized_name}"
+            else
+                echo "Branch creation cancelled"
+            fi
+        fi
+    fi
+}
+
+# Basic switch with name sanitization
+gsw() {
+    if [ -z "$1" ]; then
+        echo "Usage: gsw <branch-name>"
+        return 1
+    fi
+    
+    local sanitized_name=$(sanitize_branch_name "$1")
+    if [ "$1" != "$sanitized_name" ]; then
+        echo "Original: $1"
+        echo "Sanitized: $sanitized_name"
+        echo -n "Continue with sanitized name? [Y/n] "
+        read confirm
+        if [[ ! "$confirm" =~ ^[Yy]?$ ]]; then
+            echo "Operation cancelled"
+            return 1
+        fi
+    fi
+    git switch "$sanitized_name"
+}
+
+# List recent branches with quick switch
+gswri() {
+    local branches branch
+    branches=$(git for-each-ref --count=30 --sort=-committerdate refs/heads/ --format="%(refname:short)") &&
+    branch=$(echo "$branches" |
+        fzf --height 40% \
+            --reverse \
+            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" {}' \
+            --preview-window=right:60% \
+            --prompt="Switch to recent branch: "
+    ) &&
+    git switch "$branch"
+}
+
+# Other basic aliases
+alias gswb='git switch -'
+alias gswm='git switch $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'
+
+
+# Interactive git commit with conventional commit support
+gci() {
+    # Check if there are staged changes
+    if git diff --cached --quiet; then
+        echo "No staged changes found. Do you want to:"
+        echo "1) Stage all changes and commit"
+        echo "2) Exit"
+        read -k 1 choice
+        echo ""
+        
+        case $choice in
+            1)
+                git add .
+                ;;
+            *)
+                echo "Commit cancelled"
+                return 1
+                ;;
+        esac
+    fi
+    
+    # Select commit type using fzf
+    local type=$(echo -e "feat: New feature\nfix: Bug fix\ndocs: Documentation\nstyle: Code style\nrefactor: Code refactor\nperf: Performance\ntest: Tests\nchore: Chores\nbuild: Build changes\nci: CI changes" |
+        fzf --height 20% \
+            --reverse \
+            --prompt="Select commit type: " \
+            --preview 'echo {} | sed "s/:.*//" | xargs -I % echo "# % commits\n\nUse % for changes that..."' |
+        sed 's/:.*//')
+    
+    if [ -z "$type" ]; then
+        echo "Commit cancelled"
+        return 1
+    fi
+    
+    # Optional scope
+    echo -n "Enter scope (optional, press enter to skip): "
+    read scope
+    
+    # Get commit message
+    echo -n "Enter commit message: "
+    read message
+    
+    if [ -z "$message" ]; then
+        echo "Commit message cannot be empty"
+        return 1
+    fi
+    
+    # Sanitize the message: replace multiple spaces with single space,
+    # remove special characters, and ensure first char is lowercase
+    message=$(echo "$message" | \
+              sed 's/^[A-Z]/\L&/' | \
+              sed 's/[^a-zA-Z0-9 ,.:-]//g' | \
+              sed 's/  */ /g' | \
+              sed 's/^ *//g' | \
+              sed 's/ *$//g')
+    
+    # Build the commit message
+    local full_message
+    if [ -n "$scope" ]; then
+        scope=$(echo "$scope" | sed 's/[^a-zA-Z0-9-]//g')
+        full_message="$type($scope): $message"
+    else
+        full_message="$type: $message"
+    fi
+    
+    # Show the final message and ask for confirmation
+    echo "Commit message will be:"
+    echo "  $full_message"
+    echo -n "Proceed with commit? [Y/n] "
+    read confirm
+    
+    if [[ "$confirm" =~ ^[Yy]?$ ]]; then
+        # Optional breaking change or long description
+        echo "Add breaking change or long description? [y/N] "
+        read -k 1 add_body
+        echo ""
+        
+        if [[ "$add_body" =~ ^[Yy]$ ]]; then
+            # Open editor for full message
+            echo "$full_message" > /tmp/commit_msg
+            echo "" >> /tmp/commit_msg
+            echo "" >> /tmp/commit_msg
+            $EDITOR /tmp/commit_msg
+            git commit -F /tmp/commit_msg
+            rm /tmp/commit_msg
+        else
+            git commit -m "$full_message"
+        fi
+        
+        # Show the commit
+        echo "\nCommit created:"
+        git log -1 --oneline --color
+    else
+        echo "Commit cancelled"
+        return 1
+    fi
+}
+
+# Quick commit alias
+alias gc='git commit'
+alias gca='git commit --amend'
+alias gcm='git commit -m'
+
+# Show what's going to be committed
+alias gci-status='git status --short'
+alias gci-diff='git diff --cached --diff-algorithm=minimal'
+
+# Interactive commit with all changes added
+gcia() {
+    git add .
+    gci
+}
+
+# Quick commit with conventional prefix
+# gcf() { gcm "fix: $*" }     # Fix
+# gcft() { gcm "feat: $*" }   # Feature
+# gcc() { gcm "chore: $*" }   # Chore
+# gcd() { gcm "docs: $*" }    # Docs
+# gcr() { gcm "refactor: $*" } # Refactor
+
 # Kubernetes
 alias k='kubectl'
 alias kd='kubectl get deployment'
@@ -117,8 +363,19 @@ alias krmfailed='kctl delete pods --field-selector=status.phase=Failed'
 
 alias kx='kubectx'
 
+alias prd='export AWS_PROFILE=prod && kx production'
+alias pex='export AWS_PROFILE=prod && kx prd-external'
+alias pit='export AWS_PROFILE=prod && kx prd-internal'
+alias stg='export AWS_PROFILE=pre-prod && kx devtest'
+alias dev='export AWS_PROFILE=pre-prod && kx dev'
+alias tst='export AWS_PROFILE=pre-prod && kx sre-test'
+
+alias lpd='cia sso -p prod && export AWS_PROFILE=prod'
+alias lppd='cia sso -p pre-prod && export AWS_PROFILE=pre-prod'
+
 # FZF
-alias sd="cd ~ && \$(find Documents src Desktop Downloads -type d -maxdepth 45  |  fzf)"
+alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4  |  fzf)"
+alias docker=podman
 
 # Key bindings
 bind '^f' 'sd' # Open fzf finder quicker
@@ -142,3 +399,5 @@ source <(alias s=switch)
 
 source <(compdef _switcher switch)
 
+# Pull in env vars necessary for Capsule development
+source /Users/pthapa/.config/cia/.cia_envvars
