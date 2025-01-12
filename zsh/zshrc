@@ -28,184 +28,15 @@ PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Reso
 # Tihis is the line adds $GOPATH/bin to $PATH
 PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
 
-lolbanner ()
+function lolbanner ()
 {
     echo
     figlet -f ~/.local/share/fonts/3d.flf $* | lolcat
     echo
 }
 
-# Github
-alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
-
-# Docker
-alias dup='docker-compose up -d'
-alias ddown='docker-compose down'
-
-# Terminal shortcuts
-alias lll='ls -lahtr'
-alias grep2="grep -v '^\s*$\|^\s*\#' $1"
-alias cls="clear"
-alias pd="cd ~/work"
-alias wd="cd ~/personal"
-alias c="clear"
-
-# Check internet and dns
-alias ruok='
-            # Ping Google
-            echo "Pinging Google..."
-            ping -c 2 google.com;
-
-            # DNS lookup for Google
-            echo -e "\nDNS Lookup for Google:"
-            dig +short google.com;
-
-            # Retrieve headers from Google homepage
-            echo -e "\nHeaders from Google homepage:"
-            curl -I http://www.google.com 2>/dev/null | head -n 1;
-
-            # Check if Google is reachable using wget
-            echo -e "\nChecking Google reachability with wget..."
-            wget -q --spider www.google.com;
-            if [ $? -eq 0 ]; then
-                echo "OK"
-            else
-                echo "NOT OKAY"
-            fi
-
-            # Perform DNS lookup using nslookup
-            echo -e "\nDNS Lookup for Google using nslookup:"
-            nslookup google.com
-            '
-
-# Github
-alias gcam='git commit -am'
-alias gs='git status'
-alias gplr='git pull --rebase'
-alias gpsh='git push'
-alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
-alias glg='git log'
-# alias ggr='git grep -n -i --color'   
-alias ggr='git grep -n -i -w -C 2 --color --break --heading'
-alias gd='git diff'
-alias gds='git diff --staged'
-alias gdw='git diff --word-diff=color'
-alias gdt='git diff --stat'
-alias gdm='git diff main...'
-alias gdf='git diff --'
-alias gdd='git diff --color-words --word-diff-regex="[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"'
-
-# Remove existing alias if present
-unalias gsw 2>/dev/null
-
-# Function to sanitize branch names
-sanitize_branch_name() {
-    # First replace any character that isn't alphanumeric, hyphen, or underscore with a hyphen
-    # Then remove leading/trailing hyphens/underscores and collapse multiple hyphens
-    echo "$1" | sed 's/[^a-zA-Z0-9_-]/-/g' | \
-               sed 's/^[-_]*//g' | \
-               sed 's/[-_]*$//g' | \
-               sed 's/[-_]\{2,\}/-/g' | \
-               tr '[:upper:]' '[:lower:]'
-}
-
-# Interactive git branch switcher with fuzzy search
-# Requires: fzf (brew install fzf)
-# Interactive git branch switcher with fuzzy search
-gswi() {
-    local branches branch
-    
-    branches=$(git branch --all | grep -v HEAD) &&
-    branch=$(echo "$branches" |
-        fzf --height 40% \
-            --ansi \
-            --reverse \
-            --no-multi \
-            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" $(sed "s/.* //" <<< {})' \
-            --preview-window=right:60% \
-            --prompt="Switch to branch: " \
-            --bind 'ctrl-o:execute(git log --stat $(sed "s/.* //" <<< {}))'
-    ) &&
-    branch_name=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##") &&
-    git switch "$branch_name"
-}
-
-# Interactive create new branch with prefix suggestions and name sanitization
-gswci() {
-    local prefix branch_name sanitized_name
-    
-    # Common branch prefixes
-    prefix=$(echo -e "feature/\nfix/\nhotfix/\nrelease/\nchore/\ndocs/" |
-        fzf --height 20% \
-            --reverse \
-            --prompt="Select branch prefix: " \
-            --preview 'echo "This will create a new branch with the selected prefix"'
-    )
-    
-    if [ ! -z "$prefix" ]; then
-        echo -n "Enter branch name (without prefix): "
-        read input_name
-        
-        if [ ! -z "$input_name" ]; then
-            # Sanitize the branch name
-            sanitized_name=$(sanitize_branch_name "$input_name")
-            
-            # Show the sanitized name and ask for confirmation
-            echo "Branch name will be: ${prefix}${sanitized_name}"
-            echo -n "Create branch? [Y/n] "
-            read confirm
-            
-            if [[ "$confirm" =~ ^[Yy]?$ ]]; then
-                git switch -c "${prefix}${sanitized_name}"
-            else
-                echo "Branch creation cancelled"
-            fi
-        fi
-    fi
-}
-
-# Basic switch with name sanitization
-gsw() {
-    if [ -z "$1" ]; then
-        echo "Usage: gsw <branch-name>"
-        return 1
-    fi
-    
-    local sanitized_name=$(sanitize_branch_name "$1")
-    if [ "$1" != "$sanitized_name" ]; then
-        echo "Original: $1"
-        echo "Sanitized: $sanitized_name"
-        echo -n "Continue with sanitized name? [Y/n] "
-        read confirm
-        if [[ ! "$confirm" =~ ^[Yy]?$ ]]; then
-            echo "Operation cancelled"
-            return 1
-        fi
-    fi
-    git switch "$sanitized_name"
-}
-
-# List recent branches with quick switch
-gswri() {
-    local branches branch
-    branches=$(git for-each-ref --count=30 --sort=-committerdate refs/heads/ --format="%(refname:short)") &&
-    branch=$(echo "$branches" |
-        fzf --height 40% \
-            --reverse \
-            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" {}' \
-            --preview-window=right:60% \
-            --prompt="Switch to recent branch: "
-    ) &&
-    git switch "$branch"
-}
-
-# Other basic aliases
-alias gswb='git switch -'
-alias gswm='git switch $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'
-
-
 # Interactive git commit with conventional commit support
-gci() {
+function gci() {
     # Check if there are staged changes
     if git diff --cached --quiet; then
         echo "No staged changes found. Do you want to:"
@@ -302,6 +133,289 @@ gci() {
     fi
 }
 
+# Sanitize branch names
+sanitize_branch_name() {
+    # First replace any character that isn't alphanumeric, hyphen, or underscore with a hyphen
+    # Then remove leading/trailing hyphens/underscores and collapse multiple hyphens
+    echo "$1" | sed 's/[^a-zA-Z0-9_-]/-/g' | \
+               sed 's/^[-_]*//g' | \
+               sed 's/[-_]*$//g' | \
+               sed 's/[-_]\{2,\}/-/g' | \
+               tr '[:upper:]' '[:lower:]'
+}
+
+# Interactive git branch switcher with fuzzy search
+# Requires: fzf (brew install fzf)
+# Interactive git branch switcher with fuzzy search
+function gswi() {
+    local branches branch
+    
+    branches=$(git branch --all | grep -v HEAD) &&
+    branch=$(echo "$branches" |
+        fzf --height 40% \
+            --ansi \
+            --reverse \
+            --no-multi \
+            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" $(sed "s/.* //" <<< {})' \
+            --preview-window=right:60% \
+            --prompt="Switch to branch: " \
+            --bind 'ctrl-o:execute(git log --stat $(sed "s/.* //" <<< {}))'
+    ) &&
+    branch_name=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##") &&
+    git switch "$branch_name"
+}
+
+# Interactive create new branch with prefix suggestions and name sanitization
+function gswci() {
+    local prefix branch_name sanitized_name
+    
+    # Common branch prefixes
+    prefix=$(echo -e "feature/\nfix/\nhotfix/\nrelease/\nchore/\ndocs/" |
+        fzf --height 20% \
+            --reverse \
+            --prompt="Select branch prefix: " \
+            --preview 'echo "This will create a new branch with the selected prefix"'
+    )
+    
+    if [ ! -z "$prefix" ]; then
+        echo -n "Enter branch name (without prefix): "
+        read input_name
+        
+        if [ ! -z "$input_name" ]; then
+            # Sanitize the branch name
+            sanitized_name=$(sanitize_branch_name "$input_name")
+            
+            # Show the sanitized name and ask for confirmation
+            echo "Branch name will be: ${prefix}${sanitized_name}"
+            echo -n "Create branch? [Y/n] "
+            read confirm
+            
+            if [[ "$confirm" =~ ^[Yy]?$ ]]; then
+                git switch -c "${prefix}${sanitized_name}"
+            else
+                echo "Branch creation cancelled"
+            fi
+        fi
+    fi
+}
+
+# Basic switch with name sanitization
+function gsw() {
+    if [ -z "$1" ]; then
+        echo "Usage: gsw <branch-name>"
+        return 1
+    fi
+    
+    local sanitized_name=$(sanitize_branch_name "$1")
+    if [ "$1" != "$sanitized_name" ]; then
+        echo "Original: $1"
+        echo "Sanitized: $sanitized_name"
+        echo -n "Continue with sanitized name? [Y/n] "
+        read confirm
+        if [[ ! "$confirm" =~ ^[Yy]?$ ]]; then
+            echo "Operation cancelled"
+            return 1
+        fi
+    fi
+    git switch "$sanitized_name"
+}
+
+# Fix last 10 commits by squashing similar ones and updating others
+function fix_commits() {
+    local BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+    local COMMIT_COUNT=10
+    
+    # Store current branch and check if we have enough commits
+    local TOTAL_COMMITS=$(git rev-list --count HEAD)
+    if [[ $TOTAL_COMMITS -lt $COMMIT_COUNT ]]; then
+        echo "Warning: Only $TOTAL_COMMITS commits available"
+        COMMIT_COUNT=$TOTAL_COMMITS
+    fi
+    
+    # Create temporary file to store commit messages
+    local TEMP_FILE=$(mktemp)
+    
+    # Get last 10 commits with their full messages
+    git log -n $COMMIT_COUNT --format="%H %s" > $TEMP_FILE
+    
+    # Create associative array to store similar commits
+    typeset -A similar_commits
+    local current_hash=""
+    local current_msg=""
+    
+    # Read the temp file and group similar commits
+    while read -r line; do
+        current_hash=${line%% *}
+        current_msg=${line#* }
+        
+        # Normalize message for comparison (lowercase, remove punctuation)
+        local normalized_msg=$(echo $current_msg | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
+        
+        # Check if we have a similar message
+        local found_similar=0
+        for key in ${(k)similar_commits}; do
+            local existing_msg=$(echo $key | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
+            if [[ $normalized_msg =~ $existing_msg || $existing_msg =~ $normalized_msg ]]; then
+                similar_commits[$key]+=" $current_hash"
+                found_similar=1
+                break
+            fi
+        done
+        
+        # If no similar message found, create new group
+        if [[ $found_similar -eq 0 ]]; then
+            similar_commits[$current_msg]=$current_hash
+        fi
+    done < $TEMP_FILE
+    
+    # Create a new branch for our changes
+    local NEW_BRANCH="${BRANCH_NAME}_fixed_$(date +%Y%m%d_%H%M%S)"
+    git checkout -b $NEW_BRANCH
+    
+    # Process each group of commits
+    for msg in ${(k)similar_commits}; do
+        local hashes=(${=similar_commits[$msg]})
+        if [[ ${#hashes} -gt 1 ]]; then
+            # Multiple similar commits - squash them
+            echo "Squashing similar commits with message: $msg"
+            git reset --soft ${hashes[-1]}^
+            git commit -m "$msg [squashed]"
+        else
+            # Single commit - keep as is
+            echo "Keeping commit: $msg"
+        fi
+    done
+    
+    # Cleanup
+    rm $TEMP_FILE
+    
+    echo "\nCommits have been processed on new branch: $NEW_BRANCH"
+    echo "\nTo merge changes back to $BRANCH_NAME, you can either:"
+    echo "\nSafe way (recommended):"
+    echo "  git checkout $NEW_BRANCH"
+    echo "  git pull origin $BRANCH_NAME"
+    echo "  git checkout $BRANCH_NAME"
+    echo "  git merge --no-ff $NEW_BRANCH"
+    echo "  git push origin $BRANCH_NAME"
+    echo "  git branch -d $NEW_BRANCH"
+    echo "\nFast way (if working alone):"
+    echo "  git checkout $BRANCH_NAME"
+    echo "  git reset --hard $NEW_BRANCH"
+    echo "  git push --force origin $BRANCH_NAME"
+    echo "  git branch -d $NEW_BRANCH"
+    echo "\nTo revert without merging:"
+    echo "  git checkout $BRANCH_NAME"
+}
+
+# List recent branches with quick switch
+function gswri() {
+    local branches branch
+    branches=$(git for-each-ref --count=30 --sort=-committerdate refs/heads/ --format="%(refname:short)") &&
+    branch=$(echo "$branches" |
+        fzf --height 40% \
+            --reverse \
+            --preview 'git log --oneline --graph --date=short --color --pretty="format:%C(auto)%cd %h%d %s" {}' \
+            --preview-window=right:60% \
+            --prompt="Switch to recent branch: "
+    ) &&
+    git switch "$branch"
+}
+
+# Other basic aliases
+alias gswb='git switch -'
+alias gswm='git switch $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'
+# alias lolbanner='lolbanner'
+# alias gswi='gswi'
+alias gb='gswci'
+# alias gsw='gsw'
+# alias fix_commits='fix_commits'
+# alias gswri='gswri'
+# alias gci='gci'
+# alias gcia='gcia'
+# alias kgpc='kgpc'
+# alias kger='kger'
+# alias kyaml='kyaml'
+# alias lgn='lgn'
+
+# Format terraform recursively
+function tffmt {
+  local depth="$1"
+
+  if [[ -z "$depth" ]]; then
+    depth=1
+  fi
+
+  if [[ "$depth" == "-r" ]]; then
+    find . -type f -name "*.tf" -exec terraform fmt {} \;
+  else
+    find . -maxdepth "$depth" -type f -name "*.tf" -exec terraform fmt {} \;
+  fi
+}
+
+# Github
+alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
+
+# Docker
+alias dup='docker-compose up -d'
+alias ddown='docker-compose down'
+
+# Terminal shortcuts
+alias lll='ls -lahtr'
+alias grep2="grep -v '^\s*$\|^\s*\#' $1"
+alias cls="clear"
+alias pd="cd ~/work"
+alias wd="cd ~/personal"
+alias c="clear"
+
+# Check internet and dns
+alias ruok='
+            # Ping Google
+            echo "Pinging Google..."
+            ping -c 2 google.com;
+
+            # DNS lookup for Google
+            echo -e "\nDNS Lookup for Google:"
+            dig +short google.com;
+
+            # Retrieve headers from Google homepage
+            echo -e "\nHeaders from Google homepage:"
+            curl -I http://www.google.com 2>/dev/null | head -n 1;
+
+            # Check if Google is reachable using wget
+            echo -e "\nChecking Google reachability with wget..."
+            wget -q --spider www.google.com;
+            if [ $? -eq 0 ]; then
+                echo "OK"
+            else
+                echo "NOT OKAY"
+            fi
+
+            # Perform DNS lookup using nslookup
+            echo -e "\nDNS Lookup for Google using nslookup:"
+            nslookup google.com
+            '
+
+# Github
+
+alias gcam='git commit -am'
+alias gs='git status'
+alias gplr='git pull --rebase'
+alias gpsh='git push'
+alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
+alias glg='git log'
+# alias ggr='git grep -n -i --color'   
+alias ggr='git grep -n -i -w -C 2 --color --break --heading'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gdw='git diff --word-diff=color'
+alias gdt='git diff --stat'
+alias gdm='git diff main...'
+alias gdf='git diff --'
+alias gdd='git diff --color-words --word-diff-regex="[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"'
+
+# Remove existing alias if present
+unalias gsw 2>/dev/null
+
 # Quick commit alias
 alias gc='git commit'
 alias gca='git commit --amend'
@@ -311,11 +425,85 @@ alias gcm='git commit -m'
 alias gci-status='git status --short'
 alias gci-diff='git diff --cached --diff-algorithm=minimal'
 
+alias hgrep='history | grep'
+
 # Interactive commit with all changes added
-gcia() {
+function gcia() {
     git add .
     gci
-}
+} 
+
+alias kgp='kubectl get pods --all-namespaces'
+alias kgs='kubectl get services --all-namespaces'
+
+function kLogsPreviewAllContainers() {
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="kubectl logs {2} --namespace {1} --all-containers" --preview-window=up:80%
+    }
+    alias klogsp=kLogsPreviewAllContainers
+
+    function kLogsAllContainers() {
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace pod
+        kubectl logs $pod --namespace $namespace --all-containers -f
+    }
+    alias klogs=kLogsAllContainers
+
+    function kLogsAllContainersAllPodsInDeployment() {
+        kubectl get deployments --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace deployment
+        kubectl logs -f deployment/$deployment --namespace $namespace -f
+    }
+    alias klogsdeployment=kLogsAllContainersAllPodsInDeployment
+
+    function kLogsContainer() {
+        # The first argument to this function should be the container name
+        # kubectl get pods -o name | fzf --preview="kubectl logs {} --container $1 | tail -20" --preview-window=up:80%
+        local container
+        container=$1
+        if [[ ! -z "${container// }" ]]; then
+            kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="echo kubectl logs {2} --namespace {1} --container $container" --preview-window=up:80% --preview-label="Logs for container $1"
+        else
+            print "Usage: kLogsContainer <container name>"
+        fi
+    }
+
+    function kexSh() {
+        local containers
+        local container
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
+        containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
+        container=$(echo ${containers/ /\\n} | fzf)
+        kubectl exec -n $namespace --stdin --tty $pod --container $containers -- /bin/sh
+    }
+
+
+    function kexBash() {
+        local containers
+        local container
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
+        containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
+        container=$(echo ${containers/ /\\n} | fzf)
+        kubectl exec -n $namespace --stdin --tty $pod --container $container -- /bin/bash
+    }
+
+    function kd() {
+        kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf --preview="echo '{}' | xargs kubectl describe $1 -n" | xargs kubectl describe $1 -n
+    }
+
+    function kdelete() {
+        kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | xargs kubectl delete $1 -n
+    }
+
+    alias kdpod='kd pod'
+
+    alias kdelpod='kdelete pod'
+
+    alias kdservice='kd service'
+
+    alias kdelservice='kdelete service'
+
+    alias kg='kubectl get '
+
+    function kgevents() {  kubectl get events --sort-by='.metadata.creationTimestamp'  }
+    alias kgev=kgevents
 
 # Quick commit with conventional prefix
 # gcf() { gcm "fix: $*" }     # Fix
@@ -332,14 +520,12 @@ alias ks='kubectl get service'
 alias ksec='kubectl get secret'
 alias kp='kubectl port-forward'
 alias kdel='kubectl delete'
-alias kg="k get"
 alias kgpo="kg po" or alias kgpo="kg pods"
 alias kgno="kg no" or alias kgno="kg nodes"
 alias kd="k describe"
 alias kaf="k apply -f"
 alias kdf="k delete -f"
 alias kgn='kubectl get nodes'
-alias kgp='kubectl get pods'
 alias kgpa='kubectl get pods -- all-namespaces'
 alias kgs='kubectl get services'
 alias kgd='kubectl get deployments'
@@ -401,3 +587,12 @@ source <(compdef _switcher switch)
 
 # Pull in env vars necessary for Capsule development
 source /Users/pthapa/.config/cia/.cia_envvars
+alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
+# bash completion for cia                                  -*- shell-script -*-
+
+# Add directory containing Zsh completion script to $fpath
+fpath+=(/Users/pthapa/.zsh/completions)
+
+# Enable autocompletion system
+autoload -U compinit
+compinit

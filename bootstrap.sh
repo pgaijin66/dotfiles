@@ -145,6 +145,32 @@ function install_terraform {
     fi
 }
 
+# Function to check if an AWS image exists
+function is_image_exists() {
+  local image_name="$1"
+  
+  if [[ -z "$image_name" ]]; then
+    echo "Usage: is_image_exists <image-name>"
+    return 1
+  fi
+
+  # Check for the image using AWS CLI
+  local result
+  result=$(aws ec2 describe-images \
+    --filters "Name=name,Values=$image_name" \
+    --query 'Images[*].[ImageId,Name]' \
+    --output json)
+
+  # Use ripgrep (rg) to search the result for matches
+  if [[ -n "$result" ]] && echo "$result" | rg -q "$image_name"; then
+    echo "Image exists:"
+    echo "$result" | rg --pretty
+  else
+    echo "Image does NOT exist."
+  fi
+}
+
+
 # Function to set up dotfiles
 function setup_dotfiles {
     DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
