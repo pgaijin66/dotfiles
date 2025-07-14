@@ -55,7 +55,14 @@ packages=(
         nettle \
         tcpdump \
         unbound \
-        velero
+        velero \
+        htop \
+        fd \
+        thefuck \
+        navi \
+        dust \
+        tldr \
+        asdf 
     )
 
 # Set up the configuration directory
@@ -219,6 +226,12 @@ function setup_config_files {
         return 1
     fi
 
+    mkdir -p ~/.config/exports
+    touch ~/.config/exports/paths
+    touch ~/.config/exports/tools
+    touch ~/.config/exports/secrets
+    touch ~/.config/exports/dev
+
     echo "Config files setup completed successfully"
 }
 
@@ -234,10 +247,5 @@ install_python
 setup_dotfiles
 setup_directories
 setup_config_files
-
-function start_services {
-    runcmd skhd --restart-service
-    runcmd yabai --restart-service
-}
 
 echo "completed !!!"

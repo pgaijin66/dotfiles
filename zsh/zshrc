@@ -1,43 +1,173 @@
 # shellcheck disable=all
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+# =============================================================================
+# ZSH CORE CONFIGURATION
+# =============================================================================
+
 export ZSH="$HOME/.oh-my-zsh"
-
 ZSH_THEME="robbyrussell"
-
-# Example format: plugins=(rails git textmate ruby lighthouse)
-# Add wisely, as too many plugins slow down shell startup.
 plugins=(git)
-
 source $ZSH/oh-my-zsh.sh
 
-# Install key binding app
+# =============================================================================
+# EXPORTS & ENVIRONMENT VARIABLES
+# =============================================================================
+
+# GPG Configuration
+export GPG_TTY=$(tty)
+
+# Development Environment
+export NVM_DIR="$HOME/.nvm"
+export CLUSTER_LOGIN_SSO=true
+
+# PATH Modifications
+PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
+PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
+
+# Exports Management System
+export EXPORTS_DIR="$HOME/.config/exports"
+
+# Create exports directory if it doesn't exist
+[ ! -d "$EXPORTS_DIR" ] && mkdir -p "$EXPORTS_DIR"
+
+load_exports() {
+    if [ -d "$EXPORTS_DIR" ]; then
+        # Only source files that exist and are readable
+        for export_file in "$EXPORTS_DIR"/*; do
+            if [ -f "$export_file" ] && [ -r "$export_file" ]; then
+                source "$export_file"
+            fi
+        done
+    fi
+}
+
+edit_exports() {
+    local file=${1:-main}
+    local filepath="$EXPORTS_DIR/$file"
+    
+    # Create the file if it doesn't exist
+    [ ! -f "$filepath" ] && touch "$filepath"
+    
+    ${EDITOR:-vim} "$filepath"
+}
+
+reload_exports() {
+    load_exports
+    echo "Exports reloaded from $EXPORTS_DIR"
+}
+
+# Load exports on startup (only if directory exists and has files)
+if [ -d "$EXPORTS_DIR" ] && [ "$(ls -A "$EXPORTS_DIR" 2>/dev/null)" ]; then
+    load_exports
+fi
+
+# =============================================================================
+# EXTERNAL TOOLS & PLUGINS SETUP
+# =============================================================================
+
+# Znap Plugin Manager
 [[ -r ~/Repos/znap/znap.zsh ]] ||
     git clone --depth 1 -- \
         https://github.com/marlonrichert/zsh-snap.git ~/Repos/znap
-source ~/Repos/znap/znap.zsh  # Start Znap
+source ~/Repos/znap/znap.zsh
 znap source marlonrichert/zsh-edit
 
+# Google Cloud SDK
+if [ -f '/usr/local/bin/google-cloud-sdk/path.zsh.inc' ]; then 
+    . '/usr/local/bin/google-cloud-sdk/path.zsh.inc'
+fi
+if [ -f '/usr/local/bin/google-cloud-sdk/completion.zsh.inc' ]; then 
+    . '/usr/local/bin/google-cloud-sdk/completion.zsh.inc'
+fi
 
-# GPG keys
-export GPG_TTY=$(tty)
+# NVM (Node Version Manager)
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Alias
+# Company-specific Environment
+source /Users/pthapa/.config/cia/.cia_envvars
 
-PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
-# Tihis is the line adds $GOPATH/bin to $PATH
-PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
+# Completions
+fpath+=(/Users/pthapa/.zsh/completions)
+autoload -U compinit
+compinit
 
-function lolbanner ()
-{
-    echo
-    figlet -f ~/.local/share/fonts/3d.flf $* | lolcat
-    echo
+# External Command Sources
+source <(alias s=switch)
+source <(compdef _switcher switch)
+
+# =============================================================================
+# BASIC SHELL ALIASES
+# =============================================================================
+
+# Terminal Navigation & Utilities
+alias lll='ls -lahtr'
+alias cls="clear"
+alias c="clear"
+alias pd="cd ~/work"
+alias wd="cd ~/personal"
+alias cat='bat'
+alias ls='exa -lah --git'
+alias docker=podman
+alias hgrep='history | grep'
+
+# File Operations
+alias grep2="grep -v '^\s*$\|^\s*\#' $1"
+mkcd() { mkdir -p "$1" && cd "$1"; }
+
+# Development Tools
+alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
+
+# FZF Integration
+alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4 | fzf)"
+
+# =============================================================================
+# GIT ALIASES & FUNCTIONS
+# =============================================================================
+
+# Basic Git Aliases
+alias gs='git status'
+alias gcam='git commit -am'
+alias gc='git commit'
+alias gca='git commit --amend'
+alias gcm='git commit -m'
+alias gplr='git pull --rebase'
+alias gpsh='git push'
+alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
+alias glg='git log'
+alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
+
+# Git Diff Aliases
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gdw='git diff --word-diff=color'
+alias gdt='git diff --stat'
+alias gdm='git diff main...'
+alias gdf='git diff --'
+alias gdd='git diff --color-words --word-diff-regex="[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"'
+
+# Git Search & Information
+alias ggr='git grep -n -i -w -C 2 --color --break --heading'
+alias gci-status='git status --short'
+alias gci-diff='git diff --cached --diff-algorithm=minimal'
+
+# Git Branch Management
+alias gswb='git switch -'
+alias gswm='git switch $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'
+alias gb='gswci'
+unalias gsw 2>/dev/null
+
+# Branch Name Sanitization
+sanitize_branch_name() {
+    echo "$1" | sed 's/[^a-zA-Z0-9_-]/-/g' | \
+               sed 's/^[-_]*//g' | \
+               sed 's/[-_]*$//g' | \
+               sed 's/[-_]\{2,\}/-/g' | \
+               tr '[:upper:]' '[:lower:]'
 }
 
-# Interactive git commit with conventional commit support
+# Interactive Git Commit with Conventional Commits
 function gci() {
-    # Check if there are staged changes
+    # Check for staged changes
     if git diff --cached --quiet; then
         echo "No staged changes found. Do you want to:"
         echo "1) Stage all changes and commit"
@@ -46,17 +176,12 @@ function gci() {
         echo ""
         
         case $choice in
-            1)
-                git add .
-                ;;
-            *)
-                echo "Commit cancelled"
-                return 1
-                ;;
+            1) git add . ;;
+            *) echo "Commit cancelled"; return 1 ;;
         esac
-    fi
+    fi 
     
-    # Select commit type using fzf
+    # Select commit type
     local type=$(echo -e "feat: New feature\nfix: Bug fix\ndocs: Documentation\nstyle: Code style\nrefactor: Code refactor\nperf: Performance\ntest: Tests\nchore: Chores\nbuild: Build changes\nci: CI changes" |
         fzf --height 20% \
             --reverse \
@@ -69,11 +194,10 @@ function gci() {
         return 1
     fi
     
-    # Optional scope
+    # Get scope and message
     echo -n "Enter scope (optional, press enter to skip): "
     read scope
     
-    # Get commit message
     echo -n "Enter commit message: "
     read message
     
@@ -82,16 +206,14 @@ function gci() {
         return 1
     fi
     
-    # Sanitize the message: replace multiple spaces with single space,
-    # remove special characters, and ensure first char is lowercase
+    # Sanitize message
     message=$(echo "$message" | \
-              sed 's/^[A-Z]/\L&/' | \
               sed 's/[^a-zA-Z0-9 ,.:-]//g' | \
               sed 's/  */ /g' | \
               sed 's/^ *//g' | \
               sed 's/ *$//g')
     
-    # Build the commit message
+    # Build commit message
     local full_message
     if [ -n "$scope" ]; then
         scope=$(echo "$scope" | sed 's/[^a-zA-Z0-9-]//g')
@@ -100,20 +222,18 @@ function gci() {
         full_message="$type: $message"
     fi
     
-    # Show the final message and ask for confirmation
+    # Confirm and commit
     echo "Commit message will be:"
     echo "  $full_message"
     echo -n "Proceed with commit? [Y/n] "
     read confirm
     
     if [[ "$confirm" =~ ^[Yy]?$ ]]; then
-        # Optional breaking change or long description
         echo "Add breaking change or long description? [y/N] "
         read -k 1 add_body
         echo ""
         
         if [[ "$add_body" =~ ^[Yy]$ ]]; then
-            # Open editor for full message
             echo "$full_message" > /tmp/commit_msg
             echo "" >> /tmp/commit_msg
             echo "" >> /tmp/commit_msg
@@ -124,7 +244,6 @@ function gci() {
             git commit -m "$full_message"
         fi
         
-        # Show the commit
         echo "\nCommit created:"
         git log -1 --oneline --color
     else
@@ -133,23 +252,15 @@ function gci() {
     fi
 }
 
-# Sanitize branch names
-sanitize_branch_name() {
-    # First replace any character that isn't alphanumeric, hyphen, or underscore with a hyphen
-    # Then remove leading/trailing hyphens/underscores and collapse multiple hyphens
-    echo "$1" | sed 's/[^a-zA-Z0-9_-]/-/g' | \
-               sed 's/^[-_]*//g' | \
-               sed 's/[-_]*$//g' | \
-               sed 's/[-_]\{2,\}/-/g' | \
-               tr '[:upper:]' '[:lower:]'
+# Commit All Changes Interactively
+function gcia() {
+    git add .
+    gci
 }
 
-# Interactive git branch switcher with fuzzy search
-# Requires: fzf (brew install fzf)
-# Interactive git branch switcher with fuzzy search
+# Interactive Branch Switcher
 function gswi() {
     local branches branch
-    
     branches=$(git branch --all | grep -v HEAD) &&
     branch=$(echo "$branches" |
         fzf --height 40% \
@@ -165,11 +276,9 @@ function gswi() {
     git switch "$branch_name"
 }
 
-# Interactive create new branch with prefix suggestions and name sanitization
+# Interactive Branch Creator with Prefixes
 function gswci() {
     local prefix branch_name sanitized_name
-    
-    # Common branch prefixes
     prefix=$(echo -e "feature/\nfix/\nhotfix/\nrelease/\nchore/\ndocs/" |
         fzf --height 20% \
             --reverse \
@@ -182,10 +291,7 @@ function gswci() {
         read input_name
         
         if [ ! -z "$input_name" ]; then
-            # Sanitize the branch name
             sanitized_name=$(sanitize_branch_name "$input_name")
-            
-            # Show the sanitized name and ask for confirmation
             echo "Branch name will be: ${prefix}${sanitized_name}"
             echo -n "Create branch? [Y/n] "
             read confirm
@@ -199,7 +305,7 @@ function gswci() {
     fi
 }
 
-# Basic switch with name sanitization
+# Basic Branch Switch with Sanitization
 function gsw() {
     if [ -z "$1" ]; then
         echo "Usage: gsw <branch-name>"
@@ -220,94 +326,7 @@ function gsw() {
     git switch "$sanitized_name"
 }
 
-# Fix last 10 commits by squashing similar ones and updating others
-function fix_commits() {
-    local BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
-    local COMMIT_COUNT=10
-    
-    # Store current branch and check if we have enough commits
-    local TOTAL_COMMITS=$(git rev-list --count HEAD)
-    if [[ $TOTAL_COMMITS -lt $COMMIT_COUNT ]]; then
-        echo "Warning: Only $TOTAL_COMMITS commits available"
-        COMMIT_COUNT=$TOTAL_COMMITS
-    fi
-    
-    # Create temporary file to store commit messages
-    local TEMP_FILE=$(mktemp)
-    
-    # Get last 10 commits with their full messages
-    git log -n $COMMIT_COUNT --format="%H %s" > $TEMP_FILE
-    
-    # Create associative array to store similar commits
-    typeset -A similar_commits
-    local current_hash=""
-    local current_msg=""
-    
-    # Read the temp file and group similar commits
-    while read -r line; do
-        current_hash=${line%% *}
-        current_msg=${line#* }
-        
-        # Normalize message for comparison (lowercase, remove punctuation)
-        local normalized_msg=$(echo $current_msg | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
-        
-        # Check if we have a similar message
-        local found_similar=0
-        for key in ${(k)similar_commits}; do
-            local existing_msg=$(echo $key | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
-            if [[ $normalized_msg =~ $existing_msg || $existing_msg =~ $normalized_msg ]]; then
-                similar_commits[$key]+=" $current_hash"
-                found_similar=1
-                break
-            fi
-        done
-        
-        # If no similar message found, create new group
-        if [[ $found_similar -eq 0 ]]; then
-            similar_commits[$current_msg]=$current_hash
-        fi
-    done < $TEMP_FILE
-    
-    # Create a new branch for our changes
-    local NEW_BRANCH="${BRANCH_NAME}_fixed_$(date +%Y%m%d_%H%M%S)"
-    git checkout -b $NEW_BRANCH
-    
-    # Process each group of commits
-    for msg in ${(k)similar_commits}; do
-        local hashes=(${=similar_commits[$msg]})
-        if [[ ${#hashes} -gt 1 ]]; then
-            # Multiple similar commits - squash them
-            echo "Squashing similar commits with message: $msg"
-            git reset --soft ${hashes[-1]}^
-            git commit -m "$msg [squashed]"
-        else
-            # Single commit - keep as is
-            echo "Keeping commit: $msg"
-        fi
-    done
-    
-    # Cleanup
-    rm $TEMP_FILE
-    
-    echo "\nCommits have been processed on new branch: $NEW_BRANCH"
-    echo "\nTo merge changes back to $BRANCH_NAME, you can either:"
-    echo "\nSafe way (recommended):"
-    echo "  git checkout $NEW_BRANCH"
-    echo "  git pull origin $BRANCH_NAME"
-    echo "  git checkout $BRANCH_NAME"
-    echo "  git merge --no-ff $NEW_BRANCH"
-    echo "  git push origin $BRANCH_NAME"
-    echo "  git branch -d $NEW_BRANCH"
-    echo "\nFast way (if working alone):"
-    echo "  git checkout $BRANCH_NAME"
-    echo "  git reset --hard $NEW_BRANCH"
-    echo "  git push --force origin $BRANCH_NAME"
-    echo "  git branch -d $NEW_BRANCH"
-    echo "\nTo revert without merging:"
-    echo "  git checkout $BRANCH_NAME"
-}
-
-# List recent branches with quick switch
+# Recent Branches Switcher
 function gswri() {
     local branches branch
     branches=$(git for-each-ref --count=30 --sort=-committerdate refs/heads/ --format="%(refname:short)") &&
@@ -321,12 +340,308 @@ function gswri() {
     git switch "$branch"
 }
 
-# Other basic aliases
-alias gswb='git switch -'
-alias gswm='git switch $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'
+# Advanced Commit History Fixer
+function fix_commits() {
+    local BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+    local COMMIT_COUNT=10
+    
+    local TOTAL_COMMITS=$(git rev-list --count HEAD)
+    if [[ $TOTAL_COMMITS -lt $COMMIT_COUNT ]]; then
+        echo "Warning: Only $TOTAL_COMMITS commits available"
+        COMMIT_COUNT=$TOTAL_COMMITS
+    fi
+    
+    local TEMP_FILE=$(mktemp)
+    git log -n $COMMIT_COUNT --format="%H %s" > $TEMP_FILE
+    
+    typeset -A similar_commits
+    local current_hash="" current_msg=""
+    
+    while read -r line; do
+        current_hash=${line%% *}
+        current_msg=${line#* }
+        
+        local normalized_msg=$(echo $current_msg | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
+        
+        local found_similar=0
+        for key in ${(k)similar_commits}; do
+            local existing_msg=$(echo $key | tr '[:upper:]' '[:lower:]' | sed 's/[[:punct:]]//g')
+            if [[ $normalized_msg =~ $existing_msg || $existing_msg =~ $normalized_msg ]]; then
+                similar_commits[$key]+=" $current_hash"
+                found_similar=1
+                break
+            fi
+        done
+        
+        if [[ $found_similar -eq 0 ]]; then
+            similar_commits[$current_msg]=$current_hash
+        fi
+    done < $TEMP_FILE
+    
+    local NEW_BRANCH="${BRANCH_NAME}_fixed_$(date +%Y%m%d_%H%M%S)"
+    git checkout -b $NEW_BRANCH
+    
+    for msg in ${(k)similar_commits}; do
+        local hashes=(${=similar_commits[$msg]})
+        if [[ ${#hashes} -gt 1 ]]; then
+            echo "Squashing similar commits with message: $msg"
+            git reset --soft ${hashes[-1]}^
+            git commit -m "$msg [squashed]"
+        else
+            echo "Keeping commit: $msg"
+        fi
+    done
+    
+    rm $TEMP_FILE
+    
+    echo "\nCommits have been processed on new branch: $NEW_BRANCH"
+    echo "\nTo merge changes back to $BRANCH_NAME:"
+    echo "Safe way: git checkout $BRANCH_NAME && git merge --no-ff $NEW_BRANCH"
+    echo "Fast way: git checkout $BRANCH_NAME && git reset --hard $NEW_BRANCH"
+}
+
+# =============================================================================
+# DOCKER ALIASES
+# =============================================================================
+
+alias dup='docker-compose up -d'
+alias ddown='docker-compose down'
+
+# =============================================================================
+# TERRAFORM ALIASES & FUNCTIONS
+# =============================================================================
+
+alias tfmt='find . -type f -name "*.tf" -exec terraform fmt {} \;'
+
+function tffmt() {
+    local depth="$1"
+    if [[ -z "$depth" ]]; then
+        depth=1
+    fi
+    if [[ "$depth" == "-r" ]]; then
+        find . -type f -name "*.tf" -exec terraform fmt {} \;
+    else
+        find . -maxdepth "$depth" -type f -name "*.tf" -exec terraform fmt {} \;
+    fi
+}
+
+# =============================================================================
+# KUBERNETES ALIASES & FUNCTIONS
+# =============================================================================
+
+# Basic Kubernetes Aliases
+alias k='kubectl'
+alias kx='kubectx'
+alias kg='kubectl get'
+alias kd='kubectl describe'
+alias kaf='k apply -f'
+alias kdf='k delete -f'
+alias kdel='kubectl delete'
+alias kp='kubectl port-forward'
+
+# Resource Management
+alias kgp='kubectl get pods --all-namespaces'
+alias kgs='kubectl get services --all-namespaces'
+alias kgd='kubectl get deployments'
+alias kgn='kubectl get nodes'
+alias kgpa='kubectl get pods --all-namespaces'
+alias ksec='kubectl get secret'
+
+# Resource Deletion
+alias kdp='kubectl delete pod'
+alias kds='kubectl delete service'
+alias kdd='kubectl delete deployment'
+alias kdn='kubectl delete namespace'
+
+# Events and Logging
+alias kgel='kubectl get events --sort-by=.lastTimestamp'
+alias kgec='kubectl get events --sort-by=.metadata.creationTimestamp'
+alias krmfailed='kubectl delete pods --field-selector=status.phase=Failed'
+
+# Advanced Aliases
+alias kgworld='kubectl get $(kubectl api-resources --verbs=list --namespaced -o name | paste -sd ",")'
+alias kgnr="k get nodes --no-headers | awk '{print \$1}' | xargs -I {} sh -c 'echo {} ; kubectl describe node {} | grep Allocated -A 5 | grep -ve Event -ve Allocated -ve percent -ve -- ; echo '"
+alias kdebug="kubectl -n default run debug-$USER --rm -it --tty --image leodotcloud/swiss-army-knife:v0.12 --image-pull-policy=IfNotPresent -- bash"
+alias kping='kubectl run httping -it --image bretfisher/httping --image-pull-policy=IfNotPresent --rm=true --'
+
+# Namespace Management
+alias kn='kubectl config set-context --current --namespace'
+
+# Kubernetes Helper Functions
+function kgpc() { 
+    kubectl get pod -o jsonpath="{.spec.containers[*].name}" "$@" && echo "" 
+}
+
+function kger() { 
+    kubectl get events --sort-by=.lastTimestamp --field-selector involvedObject.name="$@" 
+}
+
+function kyaml() { 
+    kubectl get "$@" -o yaml | kubectl-neat 
+}
+
+function kgevents() {  
+    kubectl get events --sort-by='.metadata.creationTimestamp'  
+}
+alias kgev=kgevents
+
+# Log Management Functions
+function kLogsPreviewAllContainers() {
+    kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="kubectl logs {2} --namespace {1} --all-containers" --preview-window=up:80%
+}
+alias klogsp=kLogsPreviewAllContainers
+
+function kLogsAllContainers() {
+    kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace pod
+    kubectl logs $pod --namespace $namespace --all-containers -f
+}
+alias klogs=kLogsAllContainers
+
+function kLogsAllContainersAllPodsInDeployment() {
+    kubectl get deployments --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace deployment
+    kubectl logs -f deployment/$deployment --namespace $namespace -f
+}
+alias klogsdeployment=kLogsAllContainersAllPodsInDeployment
+
+function kLogsContainer() {
+    local container=$1
+    if [[ ! -z "${container// }" ]]; then
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="echo kubectl logs {2} --namespace {1} --container $container" --preview-window=up:80% --preview-label="Logs for container $1"
+    else
+        print "Usage: kLogsContainer <container name>"
+    fi
+}
+
+# Pod Execution Functions
+function kexSh() {
+    local containers container
+    kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
+    containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
+    container=$(echo ${containers/ /\\n} | fzf)
+    kubectl exec -n $namespace --stdin --tty $pod --container $containers -- /bin/sh
+}
+
+function kexBash() {
+    local containers container
+    kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
+    containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
+    container=$(echo ${containers/ /\\n} | fzf)
+    kubectl exec -n $namespace --stdin --tty $pod --container $container -- /bin/bash
+}
+
+# Resource Description and Deletion
+function kd() {
+    kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf --preview="echo '{}' | xargs kubectl describe $1 -n" | xargs kubectl describe $1 -n
+}
+
+function kdelete() {
+    kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | xargs kubectl delete $1 -n
+}
+
+alias kdpod='kd pod'
+alias kdelpod='kdelete pod'
+alias kdservice='kd service'
+alias kdelservice='kdelete service'
+
+# =============================================================================
+# AWS & CIA (COMPANY-SPECIFIC) CONFIGURATION
+# =============================================================================
+
+# AWS Profile Management
+switch_profile() {
+    local profile=$1
+    if [[ "$profile" == "pre-prod" || "$profile" == "prod" ]]; then
+        export AWS_PROFILE=$profile
+        export AWS_DEFAULT_PROFILE=$profile
+        echo "Switched to $profile profile"
+    else
+        echo "Invalid profile. Usage: switch_profile [pre-prod|prod]"
+    fi
+}
+
+# AWS Role Assumption
+alias rpp='cia role assume --profile=pre-prod --account=capsulerx-pre-prod --role=admin && export AWS_PROFILE=pre-prod'
+alias rprd='cia role assume --profile=prod --account=capsulerx --role=admin && export AWS_PROFILE=prod'
+alias sw-pre-prd="switch_profile pre-prod"
+alias sw-prd="switch_profile prod"
+
+# Cluster Login Shortcuts
+alias dev='cia cluster login --cluster=dev --profile=pre-prod && export AWS_PROFILE=pre-prod && kx dev'
+alias tst='cia cluster login --cluster=sre-test --profile=pre-prod && export AWS_PROFILE=pre-prod && kx sre-test'
+alias stg='cia cluster login --cluster=devtest --profile=prod && export AWS_PROFILE=prod && kx devtest'
+alias prd='cia cluster login --cluster=production --profile=prod && export AWS_PROFILE=prod && kx production'
+alias pit='cia cluster login --cluster=prd-internal --profile=prod && export AWS_PROFILE=prod && kx prd-internal'
+alias pex='cia cluster login --cluster=prd-external --profile=prod && export AWS_PROFILE=prod && kx prd-external'
+
+# Authentication Shortcuts
+alias wai='cia auth whoami'
+alias request_oncall='cia auth request-oncall --role-arn=arn:aws:iam::874873923888:role/oncall_admin --duration=1h'
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+# Application Launchers
+cursor() {
+    /Applications/Cursor.app/Contents/MacOS/Cursor "${1:-.}"
+}
+
+function lolbanner() {
+    echo
+    figlet -f ~/.local/share/fonts/3d.flf $* | lolcat
+    echo
+}
+
+# Network Diagnostics
+alias ruok='
+    echo "Pinging Google..."
+    ping -c 2 google.com;
+    echo -e "\nDNS Lookup for Google:"
+    dig +short google.com;
+    echo -e "\nHeaders from Google homepage:"
+    curl -I http://www.google.com 2>/dev/null | head -n 1;
+    echo -e "\nChecking Google reachability with wget..."
+    wget -q --spider www.google.com;
+    if [ $? -eq 0 ]; then
+        echo "OK"
+    else
+        echo "NOT OKAY"
+    fi
+    echo -e "\nDNS Lookup for Google using nslookup:"
+    nslookup google.com
+'
+
+# =============================================================================
+# KEY BINDINGS
+# =============================================================================
+
+bind '^f' 'sd' # Open fzf finder quicker
+
+# =============================================================================
+# COMMENTED OUT / DISABLED ALIASES
+# =============================================================================
+
+# Disabled Kubernetes aliases with syntax errors
+# alias kgpo="kg po" or alias kgpo="kg pods"  # Invalid syntax
+# alias kgno="kg no" or alias kgno="kg nodes" # Invalid syntax
+# alias kd= 'kubectl delete'                  # Invalid syntax
+# alias kn='kctl config set-context --current --namespace'  # kctl should be kubectl
+# alias kgel='kctl get events --sort-by=.lastTimestamp'     # kctl should be kubectl
+# alias kgec='kctl get events --sort-by=.metadata.creationTimestamp' # kctl should be kubectl
+
+# Disabled Git aliases (functions are preferred)
+# alias gpull='git pull master && gsw'  # Moved to function
+
+# Disabled commit shortcuts (using interactive function instead)
+# gcf() { gcm "fix: $*" }
+# gcft() { gcm "feat: $*" }
+# gcc() { gcm "chore: $*" }
+# gcd() { gcm "docs: $*" }
+# gcr() { gcm "refactor: $*" }
+
+# Disabled aliases that are now functions
 # alias lolbanner='lolbanner'
 # alias gswi='gswi'
-alias gb='gswci'
 # alias gsw='gsw'
 # alias fix_commits='fix_commits'
 # alias gswri='gswri'
@@ -335,264 +650,4 @@ alias gb='gswci'
 # alias kgpc='kgpc'
 # alias kger='kger'
 # alias kyaml='kyaml'
-# alias lgn='lgn'
-
-# Format terraform recursively
-function tffmt {
-  local depth="$1"
-
-  if [[ -z "$depth" ]]; then
-    depth=1
-  fi
-
-  if [[ "$depth" == "-r" ]]; then
-    find . -type f -name "*.tf" -exec terraform fmt {} \;
-  else
-    find . -maxdepth "$depth" -type f -name "*.tf" -exec terraform fmt {} \;
-  fi
-}
-
-# Github
-alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
-
-# Docker
-alias dup='docker-compose up -d'
-alias ddown='docker-compose down'
-
-# Terminal shortcuts
-alias lll='ls -lahtr'
-alias grep2="grep -v '^\s*$\|^\s*\#' $1"
-alias cls="clear"
-alias pd="cd ~/work"
-alias wd="cd ~/personal"
-alias c="clear"
-
-# Check internet and dns
-alias ruok='
-            # Ping Google
-            echo "Pinging Google..."
-            ping -c 2 google.com;
-
-            # DNS lookup for Google
-            echo -e "\nDNS Lookup for Google:"
-            dig +short google.com;
-
-            # Retrieve headers from Google homepage
-            echo -e "\nHeaders from Google homepage:"
-            curl -I http://www.google.com 2>/dev/null | head -n 1;
-
-            # Check if Google is reachable using wget
-            echo -e "\nChecking Google reachability with wget..."
-            wget -q --spider www.google.com;
-            if [ $? -eq 0 ]; then
-                echo "OK"
-            else
-                echo "NOT OKAY"
-            fi
-
-            # Perform DNS lookup using nslookup
-            echo -e "\nDNS Lookup for Google using nslookup:"
-            nslookup google.com
-            '
-
-# Github
-
-alias gcam='git commit -am'
-alias gs='git status'
-alias gplr='git pull --rebase'
-alias gpsh='git push'
-alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
-alias glg='git log'
-# alias ggr='git grep -n -i --color'   
-alias ggr='git grep -n -i -w -C 2 --color --break --heading'
-alias gd='git diff'
-alias gds='git diff --staged'
-alias gdw='git diff --word-diff=color'
-alias gdt='git diff --stat'
-alias gdm='git diff main...'
-alias gdf='git diff --'
-alias gdd='git diff --color-words --word-diff-regex="[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"'
-
-# Remove existing alias if present
-unalias gsw 2>/dev/null
-
-# Quick commit alias
-alias gc='git commit'
-alias gca='git commit --amend'
-alias gcm='git commit -m'
-
-# Show what's going to be committed
-alias gci-status='git status --short'
-alias gci-diff='git diff --cached --diff-algorithm=minimal'
-
-alias hgrep='history | grep'
-
-# Interactive commit with all changes added
-function gcia() {
-    git add .
-    gci
-} 
-
-alias kgp='kubectl get pods --all-namespaces'
-alias kgs='kubectl get services --all-namespaces'
-
-function kLogsPreviewAllContainers() {
-        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="kubectl logs {2} --namespace {1} --all-containers" --preview-window=up:80%
-    }
-    alias klogsp=kLogsPreviewAllContainers
-
-    function kLogsAllContainers() {
-        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace pod
-        kubectl logs $pod --namespace $namespace --all-containers -f
-    }
-    alias klogs=kLogsAllContainers
-
-    function kLogsAllContainersAllPodsInDeployment() {
-        kubectl get deployments --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf | read -r namespace deployment
-        kubectl logs -f deployment/$deployment --namespace $namespace -f
-    }
-    alias klogsdeployment=kLogsAllContainersAllPodsInDeployment
-
-    function kLogsContainer() {
-        # The first argument to this function should be the container name
-        # kubectl get pods -o name | fzf --preview="kubectl logs {} --container $1 | tail -20" --preview-window=up:80%
-        local container
-        container=$1
-        if [[ ! -z "${container// }" ]]; then
-            kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}' | fzf --preview="echo kubectl logs {2} --namespace {1} --container $container" --preview-window=up:80% --preview-label="Logs for container $1"
-        else
-            print "Usage: kLogsContainer <container name>"
-        fi
-    }
-
-    function kexSh() {
-        local containers
-        local container
-        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
-        containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
-        container=$(echo ${containers/ /\\n} | fzf)
-        kubectl exec -n $namespace --stdin --tty $pod --container $containers -- /bin/sh
-    }
-
-
-    function kexBash() {
-        local containers
-        local container
-        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | read -r namespace pod
-        containers=$(kubectl get pod -n $namespace $pod -o jsonpath='{.spec.containers[*].name}')
-        container=$(echo ${containers/ /\\n} | fzf)
-        kubectl exec -n $namespace --stdin --tty $pod --container $container -- /bin/bash
-    }
-
-    function kd() {
-        kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf --preview="echo '{}' | xargs kubectl describe $1 -n" | xargs kubectl describe $1 -n
-    }
-
-    function kdelete() {
-        kubectl get $1 --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\n"}' | fzf | xargs kubectl delete $1 -n
-    }
-
-    alias kdpod='kd pod'
-
-    alias kdelpod='kdelete pod'
-
-    alias kdservice='kd service'
-
-    alias kdelservice='kdelete service'
-
-    alias kg='kubectl get '
-
-    function kgevents() {  kubectl get events --sort-by='.metadata.creationTimestamp'  }
-    alias kgev=kgevents
-
-# Quick commit with conventional prefix
-# gcf() { gcm "fix: $*" }     # Fix
-# gcft() { gcm "feat: $*" }   # Feature
-# gcc() { gcm "chore: $*" }   # Chore
-# gcd() { gcm "docs: $*" }    # Docs
-# gcr() { gcm "refactor: $*" } # Refactor
-
-# Kubernetes
-alias k='kubectl'
-alias kd='kubectl get deployment'
-alias kn='kubectl get namaspace'
-alias ks='kubectl get service'
-alias ksec='kubectl get secret'
-alias kp='kubectl port-forward'
-alias kdel='kubectl delete'
-alias kgpo="kg po" or alias kgpo="kg pods"
-alias kgno="kg no" or alias kgno="kg nodes"
-alias kd="k describe"
-alias kaf="k apply -f"
-alias kdf="k delete -f"
-alias kgn='kubectl get nodes'
-alias kgpa='kubectl get pods -- all-namespaces'
-alias kgs='kubectl get services'
-alias kgd='kubectl get deployments'
-alias kd= 'kubectl delete'
-alias kdp='kubectl delete pod'
-alias kds='kubectl delete service'
-alias kdd='kubectl delete deployment'
-alias kdn='kubectl delete namespace'
-alias kn='kctl config set-context --current --namespace'
-alias kgel='kctl get events --sort-by=.lastTimestamp'
-alias kgec='kctl get events --sort-by=.metadata.creationTimestamp'
-function kger() { kctl get events --sort-by=.lastTimestamp --field-selector involvedObject.name="$@" }
-alias kgworld='kctl get $(kubectl api-resources --verbs=list --namespaced -o name | paste -sd ",")'
-alias kgnr="k get nodes --no-headers | awk '{print \$1}' | xargs -I {} sh -c 'echo {} ; kubectl describe node {} | grep Allocated -A 5 | grep -ve Event -ve Allocated -ve percent -ve -- ; echo '"
-alias kdebug="kctl -n default run debug-$USER --rm -it --tty --image leodotcloud/swiss-army-knife:v0.12 --image-pull-policy=IfNotPresent -- bash"
-function kgpc() { kctl get pod -o jsonpath="{.spec.containers[*].name}" "$@" && echo "" }
-alias kping='kctl run httping -it --image bretfisher/httping --image-pull-policy=IfNotPresent --rm=true --'
-function kyaml() { kubectl get "$@" -o yaml | kubectl-neat }
-alias krmfailed='kctl delete pods --field-selector=status.phase=Failed'
-
-
-alias kx='kubectx'
-
-alias prd='export AWS_PROFILE=prod && kx production'
-alias pex='export AWS_PROFILE=prod && kx prd-external'
-alias pit='export AWS_PROFILE=prod && kx prd-internal'
-alias stg='export AWS_PROFILE=pre-prod && kx devtest'
-alias dev='export AWS_PROFILE=pre-prod && kx dev'
-alias tst='export AWS_PROFILE=pre-prod && kx sre-test'
-
-alias lpd='cia sso -p prod && export AWS_PROFILE=prod'
-alias lppd='cia sso -p pre-prod && export AWS_PROFILE=pre-prod'
-
-# FZF
-alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4  |  fzf)"
-alias docker=podman
-
-# Key bindings
-bind '^f' 'sd' # Open fzf finder quicker
-
-
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/usr/local/bin/google-cloud-sdk/path.zsh.inc' ]; then . '/usr/local/bin/google-cloud-sdk/path.zsh.inc'; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f '/usr/local/bin/google-cloud-sdk/completion.zsh.inc' ]; then . '/usr/local/bin/google-cloud-sdk/completion.zsh.inc'; fi
-
-export GH_TOKEN=""
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-export CLUSTER_LOGIN_SSO=true
-
-source <(alias s=switch)
-
-source <(compdef _switcher switch)
-
-# Pull in env vars necessary for Capsule development
-source /Users/pthapa/.config/cia/.cia_envvars
-alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
-# bash completion for cia                                  -*- shell-script -*-
-
-# Add directory containing Zsh completion script to $fpath
-fpath+=(/Users/pthapa/.zsh/completions)
-
-# Enable autocompletion system
-autoload -U compinit
-compinit
+# alias lgn='lgn'  # Unknown function
