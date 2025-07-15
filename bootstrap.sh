@@ -62,7 +62,8 @@ packages=(
         navi \
         dust \
         tldr \
-        asdf 
+        asdf  \
+        eza
     )
 
 # Set up the configuration directory
