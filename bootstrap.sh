@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# The
 packages=(
         bat \
         gcc \
