@@ -13,6 +13,7 @@ packages=(
         go-task \
         tree \
         nvm \
+        git \
         go \
         openjdk \
         tfenv \
@@ -64,6 +65,8 @@ packages=(
         asdf  \
         eza
     )
+
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Set up the configuration directory
 export CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME"/.config}
@@ -180,7 +183,10 @@ function is_image_exists() {
 
 # Function to set up dotfiles
 function setup_dotfiles {
-    DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    echo "Debug: DOTFILES = $DOTFILES"
+    echo "Debug: Contents of git dir:"
+    ls -la "$DOTFILES/git/" || echo "Git directory not found!"
 
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         if ! KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"; then
@@ -196,6 +202,12 @@ function setup_dotfiles {
 
     if ! chmod +x "$HOME"/.yabairc "$HOME"/.skhdrc; then
         echo "Error: Failed to make .yabairc and .skhdrc executable" >&2
+        return 1
+    fi
+
+    echo "Stowing git config..."
+    if ! stow -v -R -t "$HOME" -d "$DOTFILES" git; then
+        echo "Error: Failed to stow Git config" >&2
         return 1
     fi
 
@@ -236,12 +248,12 @@ function setup_config_files {
 }
 
 # Run the installation functions
-install_brew
-install_gnu_stow
-install_packages
-install_kitty
-install_terraform
-install_python
+# install_brew
+# install_gnu_stow
+# install_packages
+# install_kitty
+# install_terraform
+# install_python
 
 # Additional setup steps
 setup_dotfiles

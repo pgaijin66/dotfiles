@@ -1,6 +1,9 @@
 [user]
 	name = Prabesh Thapa
 	email = sthapaprabesh2020@gmail.com
+
+[core]
+    excludesfile = ~/.gitignore_global
   
 [includeIf "gitdir:~/work"]
     path = ~/work/.gitconfig
@@ -86,7 +89,7 @@
     ui = auto
 [core]
     editor = nvim
-    excludesfile = ~/.gitignore_global
+	excludesfile = /Users/pthapa/.gitignore_global
     pager = delta
 [gc]
 	auto = 256

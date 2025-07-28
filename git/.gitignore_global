@@ -1,0 +1,68 @@
+# Shell export files
+.config/exports/secrets
+.config/exports/dev
+.config/exports/main
+.config/exports/paths
+.config/exports/tools
+
+# Or ignore the entire exports directory
+.config/exports/
+
+# Alternative: ignore all export files but allow tracking specific ones
+.config/exports/*
+!.config/exports/main
+!.config/exports/paths
+
+env
+
+db.sqlite3
+*.pyc
+*.swp
+# ignore visual studio
+.vscode
+*.code-workspace
+# ignore pycharm
+.idea
+*.iml
+/static
+*.offset
+*.DS_Store
+*.py.bak
+# managed by uv
+.python_version
+
+# ignore snyk cache
+.dccache
+
+.env
+local.env
+venv
+.venv
+.tox
+.coverage
+.shell
+/scratch
+htmlcov
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.flake8
+
+celerybeat*
+
+config/settings/local_development.py
+scripts/staging_*.sql
+docker*.override.yml
+
+tags
+
+html_coverage/**
+
+# Terraform Files
+**/.terraform
+**/*.tfstate*
+tfplan
+*.zip
+plugins/
+
+.claude/
