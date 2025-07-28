@@ -45,42 +45,7 @@ Doing this, it addresses my security concerns while maintaining following:
 ### Terminal Setup
 - **Terminal Emulator**: Kitty
 - **Shell**: Zsh with Oh-My-Zsh
-- **CLI Tools**:
-  - bat (better cat)
-  - gcc
-  - ansible
-  - ripgrep (better grep)
-  - pipenv
-  - black
-  - fzf (fuzzy finder)
-  - go-task
-  - tree
-  - eza (better ls)
-  - git-delta
-  - git-absorb
-  - shellcheck
-  - hadolint
-  - trivy
-  - figlet
-  - lolcat
-  - mkcert
-  - nmap
-  - snappy
-  - awscurl
-  - jid
-  - watch
-  - wget
-  - telnet
-  - mtr
-  - nettle
-  - tcpdump
-  - unbound
-  - htop
-  - fd (better find)
-  - thefuck (command correction)
-  - navi
-  - dust
-  - tldr
+- **CLI Tools**: *Defined in bootstrap.sh file*
 
 ### Development
 - **Editor**: Neovim / VSCode
