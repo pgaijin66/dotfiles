@@ -447,6 +447,25 @@ alias kgn='kubectl get nodes'
 alias kgpa='kubectl get pods --all-namespaces'
 alias ksec='kubectl get secret'
 
+# Pod distribution and node management
+alias kpods='kubectl get pods -o wide --all-namespaces'
+alias kpodsnode='kubectl get pods --all-namespaces --field-selector spec.nodeName='
+alias kgreennodes='kubectl get nodes -l replica=green --no-headers -o custom-columns=":metadata.name"'
+alias kwaitready='kubectl wait --for=condition=Ready node --timeout=300s'
+
+# Events and logs
+alias ke10='kubectl get events --sort-by=".lastTimestamp" | tail -10'
+alias ke20='kubectl get events --sort-by=".lastTimestamp" | tail -20'
+alias kevents='kubectl get events --sort-by=".lastTimestamp" | tail -20'
+alias klogs='kubectl logs --tail=100'
+alias kautoscaler='kubectl logs -n kube-system deployment/cluster-autoscaler --follow'
+
+# Shorter versions
+alias kpn='kubectl get pods --all-namespaces --field-selector spec.nodeName='
+alias kgn='kubectl get nodes -l replica=green --no-headers -o custom-columns=":metadata.name"'
+alias ke20='kubectl get events --sort-by=".lastTimestamp" | tail -20'
+alias kca='kubectl logs -n kube-system deployment/cluster-autoscaler --follow'
+
 # Resource Deletion
 alias kdp='kubectl delete pod'
 alias kds='kubectl delete service'
@@ -463,9 +482,80 @@ alias kgworld='kubectl get $(kubectl api-resources --verbs=list --namespaced -o 
 alias kgnr="k get nodes --no-headers | awk '{print \$1}' | xargs -I {} sh -c 'echo {} ; kubectl describe node {} | grep Allocated -A 5 | grep -ve Event -ve Allocated -ve percent -ve -- ; echo '"
 alias kdebug="kubectl -n default run debug-$USER --rm -it --tty --image leodotcloud/swiss-army-knife:v0.12 --image-pull-policy=IfNotPresent -- bash"
 alias kping='kubectl run httping -it --image bretfisher/httping --image-pull-policy=IfNotPresent --rm=true --'
+# Add to ~/.bashrc or ~/.zshrc
+alias knodepods='kubectl get nodes --no-headers -o custom-columns=":metadata.name,:metadata.labels.replica" | while read node replica; do count=$(kubectl get pods --all-namespaces --field-selector spec.nodeName=$node --no-headers 2>/dev/null | wc -l); echo "$node ($replica): $count pods"; done'
 
+# Shorter version
+alias knp='kubectl get nodes --no-headers -o custom-columns=":metadata.name,:metadata.labels.replica" | while read node replica; do count=$(kubectl get pods --all-namespaces --field-selector spec.nodeName=$node --no-headers 2>/dev/null | wc -l); echo "$node ($replica): $count pods"; done'
 # Namespace Management
-alias kn='kubectl config set-context --current --namespace'
+alias kn='kubectl config set-context --current --namespace' 
+
+# Usage
+# kpods | grep node-name
+# kpodsnode=ip-10-0-1-123.us-east-1.compute.internal
+# kgreennodes
+# kwaitready -l nodegroup=target-group
+# ke20
+# klogs -l app=my-app
+# kautoscaler
+
+# Basic cordon and drain
+alias kcordon='kubectl cordon'
+alias kdrain='kubectl drain'
+alias kuncordon='kubectl uncordon'
+
+# Drain with common options
+alias kdrain-safe='kubectl drain --ignore-daemonsets --delete-emptydir-data --force'
+alias kdrain-grace='kubectl drain --ignore-daemonsets --delete-emptydir-data --grace-period=300'
+
+kcd() {
+    if [ -z "$1" ]; then
+        echo "Usage: kcd <node-name>"
+        return 1
+    fi
+    echo "Cordoning node $1..."
+    kubectl cordon "$1" && \
+    echo "Draining node $1..." && \
+    kubectl drain "$1" --ignore-daemonsets --delete-emptydir-data --force
+}
+
+# Drain with custom grace period
+kcd-grace() {
+    if [ -z "$1" ]; then
+        echo "Usage: kcd-grace <node-name> [grace-period-seconds]"
+        return 1
+    fi
+    local grace_period=${2:-300}
+    echo "Cordoning node $1..."
+    kubectl cordon "$1" && \
+    echo "Draining node $1 with ${grace_period}s grace period..." && \
+    kubectl drain "$1" --ignore-daemonsets --delete-emptydir-data --grace-period="$grace_period"
+}
+
+# Safe drain (asks for confirmation)
+kcd-confirm() {
+    if [ -z "$1" ]; then
+        echo "Usage: kcd-confirm <node-name>"
+        return 1
+    fi
+    echo "About to cordon and drain node: $1"
+    read "response?Are you sure? (y/N): "
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        kubectl cordon "$1" && \
+        kubectl drain "$1" --ignore-daemonsets --delete-emptydir-data --force
+    else
+        echo "Operation cancelled."
+    fi
+}
+
+#  usage
+# kcordon ip-10-30-125-213.ec2.internal
+# kdrain-safe ip-10-30-125-213.ec2.internal
+# kcd ip-10-30-125-213.ec2.internal
+# kcd-grace ip-10-30-125-213.ec2.internal 600
+# kcd-confirm ip-10-30-125-213.ec2.internal
+# kuncordon ip-10-30-125-213.ec2.internal
+
 
 # Kubernetes Helper Functions
 function kgpc() { 
