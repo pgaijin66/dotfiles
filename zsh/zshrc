@@ -165,90 +165,117 @@ sanitize_branch_name() {
                tr '[:upper:]' '[:lower:]'
 }
 
-# Interactive Git Commit with Conventional Commits
 function gci() {
-    # Check for staged changes
+    # Auto-stage if nothing staged
     if git diff --cached --quiet; then
-        echo "No staged changes found. Do you want to:"
-        echo "1) Stage all changes and commit"
-        echo "2) Exit"
-        read -k 1 choice
-        echo ""
+        git add .
+        if git diff --cached --quiet; then
+            echo "No changes to commit"
+            return 1
+        fi
+    fi
+    
+    echo "Choose option:"
+    echo "1) Auto-generate commit message (Ollama)"
+    echo "2) Manual commit message"
+    
+    read -p "Choose (1-2): " mode
+    
+    if [ "$mode" = "1" ]; then
+        echo "Generating commit message..."
         
-        case $choice in
-            1) git add . ;;
-            *) echo "Commit cancelled"; return 1 ;;
-        esac
-    fi 
-    
-    # Select commit type
-    local type=$(echo -e "feat: New feature\nfix: Bug fix\ndocs: Documentation\nstyle: Code style\nrefactor: Code refactor\nperf: Performance\ntest: Tests\nchore: Chores\nbuild: Build changes\nci: CI changes" |
-        fzf --height 20% \
-            --reverse \
-            --prompt="Select commit type: " \
-            --preview 'echo {} | sed "s/:.*//" | xargs -I % echo "# % commits\n\nUse % for changes that..."' |
-        sed 's/:.*//')
-    
-    if [ -z "$type" ]; then
-        echo "Commit cancelled"
-        return 1
-    fi
-    
-    # Get scope and message
-    echo -n "Enter scope (optional, press enter to skip): "
-    read scope
-    
-    echo -n "Enter commit message: "
-    read message
-    
-    if [ -z "$message" ]; then
-        echo "Commit message cannot be empty"
-        return 1
-    fi
-    
-    # Sanitize message
-    message=$(echo "$message" | \
-              sed 's/[^a-zA-Z0-9 ,.:-]//g' | \
-              sed 's/  */ /g' | \
-              sed 's/^ *//g' | \
-              sed 's/ *$//g')
-    
-    # Build commit message
-    local full_message
-    if [ -n "$scope" ]; then
-        scope=$(echo "$scope" | sed 's/[^a-zA-Z0-9-]//g')
-        full_message="$type($scope): $message"
-    else
-        full_message="$type: $message"
-    fi
-    
-    # Confirm and commit
-    echo "Commit message will be:"
-    echo "  $full_message"
-    echo -n "Proceed with commit? [Y/n] "
-    read confirm
-    
-    if [[ "$confirm" =~ ^[Yy]?$ ]]; then
-        echo "Add breaking change or long description? [y/N] "
-        read -k 1 add_body
-        echo ""
+        # Get diff for context
+        diff_output=$(git diff --cached --no-color)
         
-        if [[ "$add_body" =~ ^[Yy]$ ]]; then
-            echo "$full_message" > /tmp/commit_msg
-            echo "" >> /tmp/commit_msg
-            echo "" >> /tmp/commit_msg
-            $EDITOR /tmp/commit_msg
-            git commit -F /tmp/commit_msg
-            rm /tmp/commit_msg
-        else
-            git commit -m "$full_message"
+        if [ -z "$diff_output" ]; then
+            echo "No staged changes found"
+            return 1
         fi
         
-        echo "\nCommit created:"
-        git log -1 --oneline --color
+        # Generate commit message with Ollama
+        prompt="Based on this git diff, generate a conventional commit message. Use format: type: description. Types: feat, fix, docs, style, refactor, test, chore. Keep it concise and under 50 characters. Only return the commit message, nothing else.
+
+Diff:
+$diff_output"
+        
+        # Try Docker Ollama first, fallback to local Ollama
+        if docker ps | grep -q ollama; then
+            generated_msg=$(echo "$prompt" | docker exec -i ollama ollama run tinyllama 2>/dev/null | head -1 | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        else
+            generated_msg=$(echo "$prompt" | ollama run tinyllama 2>/dev/null | head -1 | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        fi
+        
+        if [ $? -ne 0 ] || [ -z "$generated_msg" ]; then
+            echo "Failed to generate message. Ollama not available?"
+            echo "Falling back to manual input..."
+            read -p "Commit message: " message
+            commit_msg="chore: $message"
+        else
+            echo "Generated: $generated_msg"
+            read -p "Use this message? [Y/n] " confirm
+            
+            if [[ "$confirm" =~ ^[Nn]$ ]]; then
+                read -p "Enter your message: " message
+                # Simple type selection for manual
+                echo "1) feat 2) fix 3) docs 4) style 5) refactor 6) test 7) chore"
+                read -p "Type (1-7): " choice
+                
+                case $choice in
+                    1) type="feat" ;;
+                    2) type="fix" ;;
+                    3) type="docs" ;;
+                    4) type="style" ;;
+                    5) type="refactor" ;;
+                    6) type="test" ;;
+                    7) type="chore" ;;
+                    *) type="chore" ;;
+                esac
+                
+                commit_msg="$type: $message"
+            else
+                commit_msg="$generated_msg"
+            fi
+        fi
     else
-        echo "Commit cancelled"
-        return 1
+        # Manual mode
+        echo "Select commit type:"
+        echo "1) feat    - New feature"
+        echo "2) fix     - Bug fix" 
+        echo "3) docs    - Documentation"
+        echo "4) style   - Formatting/style"
+        echo "5) refactor- Code refactoring"
+        echo "6) test    - Tests"
+        echo "7) chore   - Maintenance"
+        
+        read -p "Choose (1-7): " choice
+        
+        case $choice in
+            1) type="feat" ;;
+            2) type="fix" ;;
+            3) type="docs" ;;
+            4) type="style" ;;
+            5) type="refactor" ;;
+            6) type="test" ;;
+            7) type="chore" ;;
+            *) echo "Invalid choice"; return 1 ;;
+        esac
+        
+        read -p "Commit message: " message
+        
+        if [ -z "$message" ]; then
+            echo "Message required"
+            return 1
+        fi
+        
+        commit_msg="$type: $message"
+    fi
+    
+    # Commit and show result
+    echo "Committing: $commit_msg"
+    git commit -m "$commit_msg"
+    
+    if [ $? -eq 0 ]; then
+        git log -1 --oneline
     fi
 }
 
