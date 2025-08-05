@@ -166,172 +166,96 @@ sanitize_branch_name() {
 }
 
 function gci() {
-    # Check if we're in a git repository
-    if ! git rev-parse --git-dir >/dev/null 2>&1; then
-        echo "Error: Not in a git repository"
+    # Utility: print error and exit
+    error() {
+        echo "❌ $1"
         return 1
-    fi
-    
-    # Auto-stage if nothing staged
+    }
+
+    # Check for Git repository
+    git rev-parse --git-dir >/dev/null 2>&1 || return $(error "Not in a Git repository.")
+
+    # Stage changes if none are staged
     if git diff --cached --quiet; then
         git add .
-        if git diff --cached --quiet; then
-            echo "No changes to commit"
-            return 1
-        fi
+        git diff --cached --quiet && return $(error "No changes to commit.")
     fi
-    
-    echo "Choose option:"
+
+    # Ask for commit mode
+    echo "Choose commit mode:"
     echo "1) Auto-generate commit message (Ollama)"
     echo "2) Manual commit message"
-    
-    echo -n "Choose (1-2): "
-    read mode
-    
-    # Validate input
+    read -p "Choose (1-2): " mode
+
     if [[ ! "$mode" =~ ^[12]$ ]]; then
-        echo "Error: Invalid choice. Please select 1 or 2"
-        return 1
+        return $(error "Invalid choice. Please select 1 or 2.")
     fi
-    
-    if [ "$mode" = "1" ]; then
-        echo "Generating commit message..."
-        
-        # Get diff for context
+
+    generate_commit_message() {
+        local diff_output prompt generated_msg exit_code
+
         diff_output=$(git diff --cached --no-color)
-        
-        if [ -z "$diff_output" ]; then
-            echo "Error: No staged changes found"
-            return 1
-        fi
-        
-        # Generate commit message with Ollama
+        [ -z "$diff_output" ] && return $(error "No staged changes found.")
+
         prompt="You are a git commit message generator. Analyze the diff and generate ONLY a conventional commit message.
 
-Rules:
-- Format: <type>: <description>
-- Types: feat (new feature), fix (bug fix), docs (documentation), style (formatting), refactor (code restructuring), perf (performance), test (testing), chore (maintenance)
-- Description: imperative mood, lowercase, no period, under 50 chars
-- Return ONLY the commit message, no explanations
+Format: <type>: <description>
+Types: feat, fix, docs, style, refactor, perf, test, chore
+Description: imperative mood, lowercase, no period, under 50 chars
 
 Examples:
 - feat: add user authentication
 - fix: resolve memory leak in parser
-- docs: update installation guide
-- style: format code with prettier
 
 Git diff:
 $diff_output"
-        
-        # Check Ollama availability and try generation
-        generated_msg=""
-        
-        if docker ps --format "table {{.Names}}" 2>/dev/null | grep -q "^ollama$"; then
-            echo "Using Docker Ollama..."
-            generated_msg=$(echo "$prompt" | timeout 30 docker exec -i ollama ollama run phi3:mini 2>/dev/null | head -1 | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-            ollama_exit_code=$?
+
+        if docker ps --format "{{.Names}}" | grep -q "^ollama$"; then
+            echo "🧠 Using Docker Ollama..."
+            generated_msg=$(echo "$prompt" | timeout 30 docker exec -i ollama ollama run codellama 2>/dev/null | head -1 | xargs)
+            exit_code=$?
         elif command -v ollama >/dev/null 2>&1; then
-            echo "Using local Ollama..."
-            generated_msg=$(echo "$prompt" | timeout 30 ollama run phi3:mini 2>/dev/null | head -1 | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-            ollama_exit_code=$?
+            echo "🧠 Using local Ollama..."
+            generated_msg=$(echo "$prompt" | timeout 30 ollama run codellama 2>/dev/null | head -1 | xargs)
+            exit_code=$?
         else
-            echo "Error: Ollama not found (neither Docker container nor local installation)"
-            ollama_exit_code=1
+            return $(error "Ollama not found. Install it or run the container.")
         fi
-        
-        # Handle Ollama errors
-        if [ $ollama_exit_code -ne 0 ] || [ -z "$generated_msg" ]; then
-            case $ollama_exit_code in
-                124) echo "Error: Ollama request timed out (30s)" ;;
-                127) echo "Error: phi3:mini model not found. Try: ollama pull phi3:mini" ;;
-                *) echo "Error: Failed to generate message with Ollama" ;;
+
+        if [ $exit_code -ne 0 ] || [ -z "$generated_msg" ]; then
+            case $exit_code in
+                124) error "Ollama timed out (30s)" ;;
+                127) error "codellama model not found. Try: ollama pull codellama" ;;
+                *)   error "Ollama failed to generate message." ;;
             esac
-            
-            echo "Falling back to manual input..."
-            echo -n "Commit message: "
-            read message
-            
-            if [ -z "$message" ]; then
-                echo "Error: Commit message cannot be empty"
-                return 1
-            fi
-            
-            commit_msg="chore: $message"
-        else
-            # Validate generated message format
-            if [[ ! "$generated_msg" =~ ^(feat|fix|docs|style|refactor|test|chore):.+ ]]; then
-                echo "Warning: Generated message doesn't follow conventional format"
-                echo "Generated: $generated_msg"
-                echo -n "Use anyway? [y/N] "
-                read confirm
-                
-                if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-                    echo "Falling back to manual input..."
-                    echo -n "Commit message: "
-                    read message
-                    
-                    if [ -z "$message" ]; then
-                        echo "Error: Commit message cannot be empty"
-                        return 1
-                    fi
-                    
-                    commit_msg="chore: $message"
-                else
-                    commit_msg="$generated_msg"
-                fi
-            else
-                echo "Generated: $generated_msg"
-                echo -n "Use this message? [Y/n] "
-                read confirm
-                
-                if [[ "$confirm" =~ ^[Nn]$ ]]; then
-                    echo -n "Enter your message: "
-                    read message
-                    
-                    if [ -z "$message" ]; then
-                        echo "Error: Commit message cannot be empty"
-                        return 1
-                    fi
-                    
-                    # Simple type selection for manual
-                    echo "1) feat 2) fix 3) docs 4) style 5) refactor 6) test 7) chore"
-                    echo -n "Type (1-7): "
-                    read choice
-                    
-                    case $choice in
-                        1) type="feat" ;;
-                        2) type="fix" ;;
-                        3) type="docs" ;;
-                        4) type="style" ;;
-                        5) type="refactor" ;;
-                        6) type="test" ;;
-                        7) type="chore" ;;
-                        *) 
-                            echo "Warning: Invalid choice, defaulting to 'chore'"
-                            type="chore" 
-                            ;;
-                    esac
-                    
-                    commit_msg="$type: $message"
-                else
-                    commit_msg="$generated_msg"
-                fi
-            fi
+            return 1
         fi
-    else
-        # Manual mode
+
+        echo "Generated: $generated_msg"
+        if [[ ! "$generated_msg" =~ ^(feat|fix|docs|style|refactor|perf|test|chore): ]]; then
+            echo "⚠️ Generated message doesn't follow conventional commit format."
+            read -p "Use anyway? [y/N]: " confirm
+            [[ ! "$confirm" =~ ^[Yy]$ ]] && return 2
+        else
+            read -p "Use this message? [Y/n]: " confirm
+            [[ "$confirm" =~ ^[Nn]$ ]] && return 2
+        fi
+
+        commit_msg="$generated_msg"
+        return 0
+    }
+
+    manual_commit_message() {
         echo "Select commit type:"
-        echo "1) feat    - New feature"
-        echo "2) fix     - Bug fix" 
-        echo "3) docs    - Documentation"
-        echo "4) style   - Formatting/style"
-        echo "5) refactor- Code refactoring"
-        echo "6) test    - Tests"
-        echo "7) chore   - Maintenance"
-        
-        echo -n "Choose (1-7): "
-        read choice
-        
+        echo "1) feat     - New feature"
+        echo "2) fix      - Bug fix"
+        echo "3) docs     - Documentation"
+        echo "4) style    - Code formatting"
+        echo "5) refactor - Code refactor"
+        echo "6) test     - Testing"
+        echo "7) chore    - Maintenance"
+
+        read -p "Type (1-7): " choice
         case $choice in
             1) type="feat" ;;
             2) type="fix" ;;
@@ -340,37 +264,31 @@ $diff_output"
             5) type="refactor" ;;
             6) type="test" ;;
             7) type="chore" ;;
-            *) 
-                echo "Error: Invalid choice. Please select 1-7"
-                return 1 
-                ;;
+            *) echo "⚠️ Invalid type, defaulting to 'chore'"; type="chore" ;;
         esac
-        
-        echo -n "Commit message: "
-        read message
-        
-        if [ -z "$message" ]; then
-            echo "Error: Commit message cannot be empty"
-            return 1
-        fi
-        
+
+        read -p "Commit message: " message
+        [ -z "$message" ] && return $(error "Commit message cannot be empty.")
         commit_msg="$type: $message"
+        return 0
+    }
+
+    commit_msg=""
+
+    if [ "$mode" = "1" ]; then
+        generate_commit_message || manual_commit_message
+    else
+        manual_commit_message
     fi
-    
-    # Final validation and commit
-    if [ -z "$commit_msg" ]; then
-        echo "Error: No commit message generated"
-        return 1
-    fi
-    
-    echo "Committing: $commit_msg"
-    
+
+    [ -z "$commit_msg" ] && return $(error "Commit message not set.")
+
+    echo "📝 Committing: $commit_msg"
     if git commit -m "$commit_msg"; then
         echo "✅ Commit successful!"
         git log -1 --oneline --color=always
     else
-        echo "❌ Commit failed!"
-        return 1
+        return $(error "Commit failed.")
     fi
 }
 
