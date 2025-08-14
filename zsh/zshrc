@@ -103,21 +103,16 @@ source <(compdef _switcher switch)
 alias lll='ls -lahtr'
 alias cls="clear"
 alias c="clear"
-alias pd="cd ~/work"
-alias wd="cd ~/personal"
+alias pd="cd ~/personal"
+alias wd="cd ~/work"
 alias cat='bat'
 alias ls='eza -lah --git'
 alias docker=podman
 alias hgrep='history | grep'
-
-# File Operations
 alias grep2="grep -v '^\s*$\|^\s*\#' $1"
 mkcd() { mkdir -p "$1" && cd "$1"; }
-
-# Development Tools
+gccd() { git clone "$1" && cd "$(basename "$1" .git)"; }
 alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
-
-# FZF Integration
 alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4 | fzf)"
 
 # =============================================================================
@@ -277,8 +272,13 @@ function gswi() {
 }
 
 # Interactive Branch Creator with Prefixes
+
 function gswci() {
-    local prefix branch_name sanitized_name
+    local prefix branch_name sanitized_name initials
+    
+    # Set default initials
+    initials="pt"
+    
     prefix=$(echo -e "feature/\nfix/\nhotfix/\nrelease/\nchore/\ndocs/" |
         fzf --height 20% \
             --reverse \
@@ -292,12 +292,13 @@ function gswci() {
         
         if [ ! -z "$input_name" ]; then
             sanitized_name=$(sanitize_branch_name "$input_name")
-            echo "Branch name will be: ${prefix}${sanitized_name}"
+            branch_name="${initials}/${prefix}${sanitized_name}"
+            echo "Branch name will be: ${branch_name}"
             echo -n "Create branch? [Y/n] "
             read confirm
             
             if [[ "$confirm" =~ ^[Yy]?$ ]]; then
-                git switch -c "${prefix}${sanitized_name}"
+                git switch -c "${branch_name}"
             else
                 echo "Branch creation cancelled"
             fi
@@ -672,9 +673,10 @@ alias request_oncall='cia auth request-oncall --role-arn=arn:aws:iam::8748739238
 # =============================================================================
 
 # Application Launchers
-cursor() {
-    /Applications/Cursor.app/Contents/MacOS/Cursor "${1:-.}"
+function cursor {
+  (nohup /Applications/Cursor.app/Contents/MacOS/Cursor "$@" > /dev/null 2>&1 &)
 }
+
 
 function lolbanner() {
     echo
