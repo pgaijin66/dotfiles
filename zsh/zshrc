@@ -20,8 +20,11 @@ export NVM_DIR="$HOME/.nvm"
 export CLUSTER_LOGIN_SSO=true
 
 # PATH Modifications
-PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin" 
+PATH="$PATH:/Users/pthapa/App:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/usr/local/go/bin:/Users/pthapa/darwin-arm64" 
 PATH=$(go env GOPATH)/bin:/Library/Frameworks/Python.framework/Versions/3.7/bin:$PATH
+
+# Fox: 'xterm-kitty': unknown terminal type.
+export TERM=xterm-256color
 
 # Exports Management System
 export EXPORTS_DIR="$HOME/.config/exports"
@@ -140,6 +143,31 @@ work() {
 alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
 alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4 | fzf)"
 
+
+# =============================================================================
+# Kubectl Debug SHELL Access
+# =============================================================================
+
+# Quick node debug access
+alias kshell='kubectl debug node/$1 -it --image=ubuntu'
+
+# Node debug with auto-chroot
+alias knodeshell='f() { kubectl debug node/$1 -it --image=ubuntu -- chroot /host bash; }; f'
+
+# Combined function for the full workflow
+kdebugnode() {
+    if [ -z "$1" ]; then
+        echo "Usage: kdebugnode <node-name>"
+        return 1
+    fi
+    echo "Connecting to node $1..."
+    kubectl debug node/$1 -it --image=ubuntu -- chroot /host bash
+}
+
+
+# Podman
+alias pt-podman="podman run --rm --name promtool -w /app -v $(pwd):/app --entrypoint promtool prom/prometheus:latest test rules tests/*"
+
 # =============================================================================
 # GIT ALIASES & FUNCTIONS
 # =============================================================================
@@ -155,6 +183,7 @@ alias gpsh='git push'
 alias gpo='git push -u origin `git symbolic-ref --short HEAD`'
 alias glg='git log'
 alias gl="git log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%an%C(reset)%C(bold yellow)%d%C(reset) %C(dim white)- %s%C(reset)' --all"
+alias gfr='git fetch origin master && git rebase origin/master --reapply-cherry-picks'
 
 # Git Diff Aliases
 alias gd='git diff'
@@ -682,12 +711,14 @@ alias sw-pre-prd="switch_profile pre-prod"
 alias sw-prd="switch_profile prod"
 
 # Cluster Login Shortcuts
-alias dev='cia cluster login --cluster=dev --profile=pre-prod && export AWS_PROFILE=pre-prod && kx dev'
-alias tst='cia cluster login --cluster=sre-test --profile=pre-prod && export AWS_PROFILE=pre-prod && kx sre-test'
-alias stg='cia cluster login --cluster=devtest --profile=prod && export AWS_PROFILE=prod && kx devtest'
-alias prd='cia cluster login --cluster=production --profile=prod && export AWS_PROFILE=prod && kx production'
-alias pit='cia cluster login --cluster=prd-internal --profile=prod && export AWS_PROFILE=prod && kx prd-internal'
-alias pex='cia cluster login --cluster=prd-external --profile=prod && export AWS_PROFILE=prod && kx prd-external'
+export HELMFILE_GOCCY_GOYAML=true
+
+alias dev='export HELMFILE_ENVIRONMENT=dev && cia role assume --profile=pre-prod --account=capsulerx-pre-prod --role=admin && export AWS_PROFILE=pre-prod && cia cluster login --cluster=dev --profile=pre-prod && export AWS_PROFILE=pre-prod && kx dev'
+alias tst='export HELMFILE_ENVIRONMENT=sre-test && cia role assume --profile=pre-prod --account=capsulerx-pre-prod --role=admin && export AWS_PROFILE=pre-prod && cia cluster login --cluster=sre-test --profile=pre-prod && export AWS_PROFILE=pre-prod && kx sre-test'
+alias stg='export HELMFILE_ENVIRONMENT=devtest && cia role assume --profile=prod --account=capsulerx --role=admin && export AWS_PROFILE=prod && cia cluster login --cluster=devtest --profile=prod && export AWS_PROFILE=prod && kx devtest'
+alias prd='export HELMFILE_ENVIRONMENT=production && cia role assume --profile=prod --account=capsulerx --role=admin && export AWS_PROFILE=prod && cia cluster login --cluster=production --profile=prod && export AWS_PROFILE=prod && kx production'
+alias pit='export HELMFILE_ENVIRONMENT=prd-internal && cia role assume --profile=prod --account=capsulerx --role=admin && export AWS_PROFILE=prod && cia cluster login --cluster=prd-internal --profile=prod && export AWS_PROFILE=prod && kx prd-internal'
+alias pex='export HELMFILE_ENVIRONMENT=prd-external && cia role assume --profile=prod --account=capsulerx --role=admin && export AWS_PROFILE=prod && cia cluster login --cluster=prd-external --profile=prod && export AWS_PROFILE=prod && kx prd-external'
 
 # Authentication Shortcuts
 alias wai='cia auth whoami'
@@ -708,6 +739,16 @@ function lolbanner() {
     figlet -f ~/.local/share/fonts/3d.flf $* | lolcat
     echo
 }
+
+function run_agent() {
+    local name="$1"
+    local task="$2"
+    echo "Starting agent: $name"
+    claude -w "$name" -n "$name" -p "$task. When done, create a PR with gh pr create." \
+      --allowedTools "Bash,Read,Edit,Write,Grep,Glob" \
+      --output-format json > "/tmp/agent-$name.json" 2>&1
+    echo "Agent $name finished"
+  }
 
 # Network Diagnostics
 alias ruok='
