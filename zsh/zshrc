@@ -112,6 +112,31 @@ alias hgrep='history | grep'
 alias grep2="grep -v '^\s*$\|^\s*\#' $1"
 mkcd() { mkdir -p "$1" && cd "$1"; }
 gccd() { git clone "$1" && cd "$(basename "$1" .git)"; }
+
+# Clone + set up a repo for working in one step:
+#   1) Clone CapsuleHealth/<repo> to ~/work/<repo> if missing
+#   2) Restore <repo>.env from the 1Password Employee vault if a Secure Note
+#      named "<repo> .env" exists AND the repo has no .env yet
+#   3) cd into it
+work() {
+  local repo="$1"
+  if [ -z "$repo" ]; then echo "usage: work <repo>" >&2; return 1; fi
+  local dir="$HOME/work/$repo"
+  if [ ! -d "$dir" ]; then
+    gh repo clone "CapsuleHealth/$repo" "$dir" || return 1
+  fi
+  if [ ! -f "$dir/.env" ] && command -v op >/dev/null 2>&1 && op account list >/dev/null 2>&1; then
+    local env_value
+    env_value=$(op item get "$repo .env" --format json 2>/dev/null \
+      | jq -r '.fields[] | select(.purpose=="NOTES") | .value' 2>/dev/null)
+    if [ -n "$env_value" ] && [ "$env_value" != "null" ]; then
+      printf '%s' "$env_value" > "$dir/.env"
+      echo "restored $dir/.env from 1Password"
+    fi
+  fi
+  cd "$dir"
+}
+
 alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
 alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4 | fzf)"
 
