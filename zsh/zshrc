@@ -116,18 +116,91 @@ alias grep2="grep -v '^\s*$\|^\s*\#' $1"
 mkcd() { mkdir -p "$1" && cd "$1"; }
 gccd() { git clone "$1" && cd "$(basename "$1" .git)"; }
 
-# Clone + set up a repo for working in one step:
-#   1) Clone CapsuleHealth/<repo> to ~/work/<repo> if missing
-#   2) Restore <repo>.env from the 1Password Employee vault if a Secure Note
-#      named "<repo> .env" exists AND the repo has no .env yet
-#   3) cd into it
+# Jump to a CapsuleHealth repo by partial/regex name:
+#   - Resolves <input> against a 24h-cached list of CapsuleHealth repos
+#     (exact > substring/regex > fuzzy "did you mean"). Prompts on multi-match.
+#   - If ~/work/<repo> exists: cd + `git pull --ff-only`.
+#   - If missing: `gh repo clone CapsuleHealth/<repo>` then restore <repo>.env
+#     from 1Password (Secure Note named "<repo> .env") if available.
+#   - `work --refresh [name]` forces cache rebuild.
 work() {
-  local repo="$1"
-  if [ -z "$repo" ]; then echo "usage: work <repo>" >&2; return 1; fi
-  local dir="$HOME/work/$repo"
-  if [ ! -d "$dir" ]; then
-    gh repo clone "CapsuleHealth/$repo" "$dir" || return 1
+  local refresh=0 input=""
+  if [ "$1" = "--refresh" ] || [ "$1" = "-r" ]; then refresh=1; shift; fi
+  input="$1"
+  if [ -z "$input" ] && [ $refresh -eq 0 ]; then
+    echo "usage: work [--refresh] <repo>" >&2; return 1
   fi
+
+  local cache="$HOME/.cache/work-repos.txt"
+  mkdir -p "$(dirname "$cache")"
+
+  local needs_refresh=0
+  if [ ! -s "$cache" ] || [ $refresh -eq 1 ]; then
+    needs_refresh=1
+  else
+    local age=$(( $(date +%s) - $(stat -f %m "$cache" 2>/dev/null || echo 0) ))
+    [ "$age" -gt 86400 ] && needs_refresh=1
+  fi
+  if [ $needs_refresh -eq 1 ]; then
+    echo "work: refreshing CapsuleHealth repo list..." >&2
+    if gh repo list CapsuleHealth --limit 2000 --json name -q '.[].name' > "$cache.tmp" 2>/dev/null && [ -s "$cache.tmp" ]; then
+      mv "$cache.tmp" "$cache"
+    else
+      rm -f "$cache.tmp"
+      echo "work: failed to fetch repo list (check 'gh auth status')" >&2
+      [ ! -s "$cache" ] && return 1
+    fi
+  fi
+
+  if [ -z "$input" ]; then
+    echo "work: cache holds $(wc -l < "$cache" | tr -d ' ') repos" >&2
+    return 0
+  fi
+
+  # Match: exact (case-insensitive) > substring/regex (grep -i) > fuzzy (fzf --filter)
+  local matches
+  matches=$(awk -v q="$input" 'BEGIN{IGNORECASE=1} tolower($0)==tolower(q){print; exit}' "$cache")
+  [ -z "$matches" ] && matches=$(grep -i -- "$input" "$cache" 2>/dev/null)
+
+  if [ -z "$matches" ]; then
+    local suggestions=""
+    command -v fzf >/dev/null 2>&1 && suggestions=$(fzf --filter="$input" < "$cache" 2>/dev/null | head -5)
+    if [ -z "$suggestions" ]; then
+      echo "work: no repo matching '$input'" >&2; return 1
+    fi
+    echo "work: no exact match for '$input'. Did you mean:" >&2
+    echo "$suggestions" | awk '{printf "  %d) %s\n", NR, $0}' >&2
+    printf "pick [1-%d] or empty to abort: " "$(echo "$suggestions" | wc -l | tr -d ' ')" >&2
+    local pick; read -r pick
+    [ -z "$pick" ] && return 1
+    matches=$(echo "$suggestions" | awk -v n="$pick" 'NR==n')
+    [ -z "$matches" ] && { echo "work: invalid pick" >&2; return 1; }
+  fi
+
+  local count=$(echo "$matches" | wc -l | tr -d ' ')
+  local repo
+  if [ "$count" -eq 1 ]; then
+    repo="$matches"
+  else
+    echo "work: $count matches for '$input':" >&2
+    echo "$matches" | awk '{printf "  %d) %s\n", NR, $0}' >&2
+    printf "pick [1-%d] or empty to abort: " "$count" >&2
+    local pick; read -r pick
+    [ -z "$pick" ] && return 1
+    repo=$(echo "$matches" | awk -v n="$pick" 'NR==n')
+    [ -z "$repo" ] && { echo "work: invalid pick" >&2; return 1; }
+  fi
+
+  local dir="$HOME/work/$repo"
+  if [ -d "$dir" ]; then
+    cd "$dir" || return 1
+    echo "work: pulling latest in $repo..." >&2
+    git pull --ff-only
+  else
+    gh repo clone "CapsuleHealth/$repo" "$dir" || return 1
+    cd "$dir" || return 1
+  fi
+
   if [ ! -f "$dir/.env" ] && command -v op >/dev/null 2>&1 && op account list >/dev/null 2>&1; then
     local env_value
     env_value=$(op item get "$repo .env" --format json 2>/dev/null \
@@ -137,11 +210,10 @@ work() {
       echo "restored $dir/.env from 1Password"
     fi
   fi
-  cd "$dir"
 }
 
 alias oma='/Users/pthapa/Documents/src/github/personal/oh-my-aliases/oma'
-alias sd="cd ~ && \$(find Documents work Desktop Downloads -type d -maxdepth 4 | fzf)"
+alias sd="cd ~ && \$(find Documents personal work Desktop Downloads -type d -maxdepth 4 | fzf)"
 
 
 # =============================================================================
@@ -809,3 +881,6 @@ bind '^f' 'sd' # Open fzf finder quicker
 # alias kger='kger'
 # alias kyaml='kyaml'
 # alias lgn='lgn'  # Unknown function
+
+# Oh My Posh prompt
+eval "$(oh-my-posh init zsh --config ~/.config/ohmyposh/catppuccin_frappe.omp.json)"
